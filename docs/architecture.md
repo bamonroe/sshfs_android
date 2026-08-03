@@ -326,6 +326,19 @@ device. It is registered in the manifest under the authority **`com.bam.sshfs.do
 the `MANAGE_DOCUMENTS` signature permission, so only the system can bind it directly while any
 app's picker can still reach it through SAF.
 
+| File | What it owns |
+|------|--------------|
+| `SshfsDocumentsProvider.kt` | The SAF entry points: roots, listings, open, create, delete, rename |
+| `DocumentId.kt` | The `hostId:/absolute/path` encoding and its containment tests |
+| `DocumentCursors.kt` | The root and document column projections, and row building |
+| `DocumentMimeTypes.kt` | Extension → MIME type, and the directory MIME constant |
+| `DocumentDescriptors.kt` | Proxy-FD vs. cached-temp-file strategy for `openDocument` |
+| `RemoteProxyCallback.kt` | The `ProxyFileDescriptorCallback` that turns reads/writes into SFTP ranges |
+| `DocumentMode.kt` | SAF's mode string parsed into open flags, as a pure value |
+| `DocumentNames.kt` | Collision-free naming (` (1)`, ` (2)`…) and extension rules |
+| `MetadataCache.kt` | The short-TTL listing/stat cache, keyed by host and path |
+| `RemoteWorkers.kt` | One single-threaded executor per host, so SFTP never runs on a binder thread |
+
 ### The provider holds no state
 
 Every session lives in `ConnectionManager`; the provider only reads it. That matters because
