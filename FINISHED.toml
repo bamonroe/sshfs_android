@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "encrypt-credentials-at-rest-with-the-android-keystore"
+title = "Encrypt credentials at rest with the Android Keystore"
+description = "Store private keys and passwords encrypted under a Keystore-backed key (EncryptedSharedPreferences or an encrypted Room column); nothing sensitive lands in plaintext prefs or the database. Optional biometric or device-credential gate before unlocking."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["security"]
+
+[[task]]
 id = "app-shell-bottom-navigation-over-hosts-identities-keys"
 title = "App shell: bottom navigation over Hosts, Identities, Keys"
 description = "Single-activity Jetpack Compose Material 3 shell with bottom navigation between the three sections plus a connections/status view showing which hosts are currently connected, with connect and disconnect controls."

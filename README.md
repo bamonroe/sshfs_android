@@ -15,9 +15,25 @@ over Connections, Hosts, Identities and Keys. The Keys, Identities and Hosts scr
 fully working; the SSH transport, the connection service, and the `DocumentsProvider` are
 still to come, so "connecting" a host currently only checks that it answers.
 
-> **Keys are not yet encrypted at rest.** Private keys currently sit in the app's private
-> database base64-encoded, not Keystore-encrypted — that lands with the credential-storage
-> task in `TODO.toml`. Don't import a key you can't afford to lose control of yet.
+## How your credentials are stored
+
+Private keys, key passphrases and identity passwords are **encrypted at rest**. Each one is
+sealed with AES-256/GCM under a key held in the **Android Keystore**, which the app can use
+but never read or export, so the app's database holds only ciphertext even if the device is
+rooted and the file is pulled off it. Everything lives in the app's private storage; nothing
+sensitive is ever written to plain preferences.
+
+Two things worth knowing:
+
+- **Wiping your device lock screen wipes the Keystore key.** If you remove or reset your PIN,
+  pattern or password, Android may discard the app's key, and the stored secrets become
+  permanently unreadable. The app will tell you a secret can't be decrypted; the fix is to
+  re-import the key or re-enter the password. Keep a backup of any key you can't regenerate.
+- Secrets written by pre-0.2 builds were only base64-encoded. They are still readable, and
+  are re-encrypted the next time you edit them — open and re-save any key or identity from
+  an older install to have it properly sealed.
+
+A biometric or PIN prompt before secrets are unlocked is planned but not implemented yet.
 
 ## Managing keys
 

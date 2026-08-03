@@ -7,7 +7,7 @@ import com.bam.sshfs.crypto.KeyImporter
 import com.bam.sshfs.crypto.KeyMaterial
 import com.bam.sshfs.crypto.KeyMaterialException
 import com.bam.sshfs.crypto.KeyPairFactory
-import com.bam.sshfs.crypto.PassthroughSecretStore
+import com.bam.sshfs.crypto.KeystoreSecretStore
 import com.bam.sshfs.crypto.SecretStore
 import com.bam.sshfs.data.db.SshfsDatabase
 import com.bam.sshfs.data.model.KeyOrigin
@@ -37,7 +37,7 @@ class KeysViewModel(
     constructor(app: Application) : this(
         app,
         SshfsDatabase.get(app).let { KeyRepository(it.keyDao(), it.identityDao()) },
-        PassthroughSecretStore(),
+        KeystoreSecretStore(),
     )
 
     val keys: StateFlow<List<SshKey>> = repo.observeAll()

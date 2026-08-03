@@ -126,12 +126,35 @@ an import that would fail.
 `KeyPairFactory.generate` runs on `Dispatchers.Default` from the ViewModel — RSA generation
 is seconds of CPU and must not touch the main thread.
 
-### `SecretStore` is a placeholder until the Keystore task
+### `SecretStore` — how secrets are sealed at rest
 
-`PassthroughSecretStore` is **base64, not encryption**. It exists so the repository, the
-ViewModel, and the schema already speak in ciphertext blobs; the credential-storage task
-swaps in the Keystore-backed implementation without touching a call site. Until then, the
-private key column is *not* actually protected — see `TODO.toml`.
+`KeystoreSecretStore` is the implementation the app wires up. It seals every secret with
+**AES-256/GCM** under a key generated in the **Android Keystore** (alias
+`com.bam.sshfs.secrets`), created on first use and never exportable — the app can ask the
+Keystore to encrypt and decrypt, but can never read the key itself. Rooting or pulling the
+database therefore yields blobs, not credentials.
+
+The stored blob is `v1:` + Base64(12-byte IV ‖ ciphertext+GCM tag). Two consequences worth
+knowing:
+
+- **The IV is per-call and chosen by the Keystore** (`setRandomizedEncryptionRequired`), so
+  two identities with the same password produce different rows, and GCM's never-reuse-an-IV
+  rule can't be broken by a call-site mistake.
+- **The `v1:` prefix is the format handle.** A blob *without* it predates encryption and is
+  read back as plain Base64, so rows written by earlier builds keep working; they are
+  re-sealed the next time that secret is written. A future scheme (a
+  user-authentication-gated key, say) gets its own prefix rather than an ambiguous blob.
+
+Failures — a truncated blob, a tampered one that fails the GCM tag, or a Keystore key wiped
+by a device-credential reset — surface as `SecretStoreException` and reach the user through
+the ViewModel's error flow. A wiped key is unrecoverable by design: the affected key or
+password must be re-entered.
+
+`PassthroughSecretStore` remains, but only as the **base64, not encryption** stand-in for
+unit tests, which run on a desktop JVM with no `AndroidKeyStore` provider. The real
+round-trip is covered by the instrumented test in `app/src/androidTest/…/crypto/`.
+
+A biometric / device-credential gate before unlocking is not wired up yet — see `TODO.toml`.
 
 ## UI — editing secrets you can't read back
 

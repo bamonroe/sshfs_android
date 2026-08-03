@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.bam.sshfs.R
-import com.bam.sshfs.crypto.PassthroughSecretStore
+import com.bam.sshfs.crypto.KeystoreSecretStore
 import com.bam.sshfs.crypto.SecretStore
 import com.bam.sshfs.data.db.SshfsDatabase
 import com.bam.sshfs.data.model.Identity
@@ -34,7 +34,7 @@ class IdentitiesViewModel(
         app,
         SshfsDatabase.get(app).let { IdentityRepository(it.identityDao(), it.hostDao()) },
         SshfsDatabase.get(app).let { KeyRepository(it.keyDao(), it.identityDao()) },
-        PassthroughSecretStore(),
+        KeystoreSecretStore(),
     )
 
     val identities: StateFlow<List<Identity>> = repo.observeAll()

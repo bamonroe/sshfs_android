@@ -21,17 +21,6 @@ finish_work = "When a task is fully finished (built, tested, documented), run `s
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
 
 [[task]]
-id = "encrypt-credentials-at-rest-with-the-android-keystore"
-title = "Encrypt credentials at rest with the Android Keystore"
-description = "Store private keys and passwords encrypted under a Keystore-backed key (EncryptedSharedPreferences or an encrypted Room column); nothing sensitive lands in plaintext prefs or the database. Optional biometric or device-credential gate before unlocking."
-status = "active"
-category = "feature"
-urgency = "high"
-order = 70
-created = 2026-08-03
-tags = ["security"]
-
-[[task]]
 id = "ssh-sftp-transport-layer"
 title = "SSH/SFTP transport layer"
 description = "Wrap SSHJ behind a small internal interface: connect using a Host plus Identity, host-key verification with a trust-on-first-use known-hosts store, proxy/jump support from the host's extra args, and SFTP operations (list, stat, open, read, write, mkdir, rename, delete). Reconnect on transient failure."
@@ -107,3 +96,14 @@ urgency = "normal"
 order = 140
 created = 2026-08-03
 tags = ["docs"]
+
+[[task]]
+id = "biometric-device-credential-gate-before-unlocking-secrets"
+title = "Biometric / device-credential gate before unlocking secrets"
+description = "KeystoreSecretStore seals secrets under a plain Keystore AES key. Add an optional user-authentication-gated key (setUserAuthenticationRequired) with a BiometricPrompt in front of it, so decrypting a private key or password needs a fingerprint or device PIN. Needs a new blob prefix (v2:) so both schemes can coexist, plus a settings toggle and a re-seal pass when it is turned on or off."
+status = "active"
+category = "feature"
+urgency = "normal"
+order = 150
+created = 2026-08-03
+tags = []
