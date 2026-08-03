@@ -12,8 +12,9 @@ storage, via the Storage Access Framework. See `CLAUDE.md` for what the project 
 
 Early. The app builds, installs, and opens on the **Connections** tab, with bottom navigation
 over Connections, Hosts, Identities and Keys. The Keys, Identities and Hosts screens are each
-fully working; the SSH transport, the connection service, and the `DocumentsProvider` are
-still to come, so "connecting" a host currently only checks that it answers.
+fully working, and connecting a host now opens a real authenticated SFTP session held by a
+foreground service. The `DocumentsProvider` is still to come, so the connections exist but
+nothing shows up in the system file picker yet.
 
 ## How your credentials are stored
 
@@ -135,9 +136,18 @@ connected*, *Connecting…*, *Connected* (with the server's version banner), or 
 the reason. **Connect** and **Disconnect** are on each row, and the tab's icon carries a badge
 counting the hosts that are up.
 
-> **Connecting doesn't sign in yet.** Until the transport and connection-manager tasks land,
-> **Connect** runs the same unauthenticated handshake as **Test connection** — a host shown as
-> connected is reachable, not logged in, and nothing appears in the file picker yet.
+**Connect** now signs in for real. The host's **default identity** supplies the credentials —
+its key is tried first, then its password — so a host without one fails immediately saying so.
+A connected host stays connected in the background: a **notification** appears listing the
+connected servers, with a **Disconnect all** action, and tapping it comes back to this screen.
+That notification is what keeps Android from killing the sessions, so don't swipe the app away
+expecting the connection to survive without it — on Android 13 and up the app asks for
+notification permission the first time it launches.
+
+Disconnecting the last host stops the service and clears the notification.
+
+> **Nothing appears in the file picker yet.** The sessions are live and authenticated, but the
+> `DocumentsProvider` that turns them into browsable roots is still to come — see `TODO.toml`.
 
 ## Requirements
 

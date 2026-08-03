@@ -114,4 +114,14 @@
     <string name="action_more">More</string>
     <string name="action_connect">Connect</string>
     <string name="action_disconnect">Disconnect</string>
+
+    <!-- The foreground service that holds the SSH sessions open. -->
+    <string name="notification_channel_connections">Connections</string>
+    <string name="notification_channel_connections_desc">Shows which servers are currently connected and available in the file picker.</string>
+    <string name="notification_no_connections">Nothing connected</string>
+    <string name="notification_disconnect_all">Disconnect all</string>
+    <plurals name="notification_connected_hosts">
+        <item quantity="one">%d server connected</item>
+        <item quantity="other">%d servers connected</item>
+    </plurals>
 </resources>

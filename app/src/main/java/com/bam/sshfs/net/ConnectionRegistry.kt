@@ -19,10 +19,10 @@ sealed interface ConnectionState {
 /**
  * Process-wide record of which hosts are currently connected.
  *
- * The foreground connection manager owns the real sessions in a later task; until
- * then this holds the state the UI shows and the [ConnectionProbe] handshake stands
- * in for a session. Keeping the registry separate from the service means the
- * connections screen doesn't change when the service lands — only the writer does.
+ * [ConnectionManager] owns the real sessions and is the only writer; this holds just
+ * the state the UI renders. Keeping the two apart means the connections screen, the
+ * nav-bar badge and the `DocumentsProvider`'s roots all read one map without any of
+ * them reaching into the service.
  */
 object ConnectionRegistry {
 

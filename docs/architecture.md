@@ -19,7 +19,7 @@ how a user builds and runs the app.
 | `…/ui/hosts/` | The Hosts screen: list, editor form + validation, connection test |
 | `…/ui/connections/` | The Connections screen: per-host state and the connect/disconnect controls |
 | `…/ui/shell/` | The single-activity shell: the `Destination` enum and its bottom nav bar |
-| `…/net/` | Transport-facing helpers: `ExtraArgs`, `ConnectionProbe`, `ConnectionRegistry` |
+| `…/net/` | Transport-facing helpers, plus the connection manager and its foreground service |
 | `…/net/ssh/` | The SSH/SFTP transport: connect, host-key trust, remote file operations |
 | `app/schemas/` | Room's exported schema JSON (generated; also an androidTest asset) |
 | `docs/` | The spoke docs — this file and `tools.md` |
@@ -204,11 +204,52 @@ bar and FAB, which is why switching tabs can throw the section composable away: 
 that matters lives in Room and in `ConnectionRegistry`.
 
 `ConnectionRegistry` (in `…/net/`) is a process-wide `StateFlow` of host id → state, held
-outside any ViewModel because the connection manager service — not the UI — will own the real
-sessions, and the nav-bar badge, the connections list, and later the `DocumentsProvider`'s
-roots all read the same map. Until that service lands, `ConnectionsViewModel` writes to the
-registry using the `ConnectionProbe` handshake, so *connected* means reachable, not
-authenticated.
+outside any ViewModel because `ConnectionManager` — not the UI — owns the real sessions, and
+the nav-bar badge, the connections list, and later the `DocumentsProvider`'s roots all read
+the same map. `ConnectionsViewModel` therefore only *sends commands* and *renders the
+registry*; it never touches a session.
+
+## Keeping connections alive — `…/net/`
+
+| File | What it owns |
+|------|--------------|
+| `ConnectionManager.kt` | The live sessions, one per connected host; connect / disconnect |
+| `ConnectionService.kt` | The foreground service that keeps the process (and the sessions) alive |
+| `ConnectionNotification.kt` | The ongoing notification, its channel, and the disconnect-all action |
+| `ConnectionRegistry.kt` | The state the UI renders |
+| `SafRoots.kt` | The SAF authority and the roots-changed notification |
+
+**Lifetime and sessions are deliberately separate.** `ConnectionService` exists only so
+Android won't kill the process while another app browses a root — a bound service would die
+with the UI and a plain background service is killed within minutes. The sessions themselves
+live in `ConnectionManager`, a process-wide singleton, so restarting the service reconnects
+nothing that is already up and the `DocumentsProvider` can look a session up from a binder
+thread without binding to anything. The service is `START_NOT_STICKY`: a restart with no
+sessions and a stale notification is worse than nothing, and the UI re-issues a connect when
+the user asks for one. It **stops itself** when the last host disconnects, so there is no
+ongoing notification without a reason for it.
+
+Commands go in as intents (`ACTION_CONNECT` / `ACTION_DISCONNECT` / `ACTION_DISCONNECT_ALL`
+with a host id) rather than through a binder, which keeps the notification action and the UI
+on exactly one path. `startForeground` is called from `onCreate`, before any dialling: Android
+gives a started service only seconds to promote itself, and a handshake takes far longer.
+
+**A connect resolves credentials, not just an address.** `ConnectionManager` reads the host's
+`defaultIdentityId` (a host without one fails with that as the reason), decrypts through
+`CredentialResolver`, and wraps the result in a `ReconnectingSession` — so the credentials are
+re-resolved on every re-dial and a rotated password takes effect without a reconnect by hand.
+Touching `serverVersion` forces the first handshake, so a bad credential fails at the Connect
+button instead of at the picker's first directory listing. Failures are recorded in the
+registry rather than thrown: the caller is a service command with no stack to unwind into.
+
+Every transition — connected, disconnected, all-disconnected — calls
+`SafRoots.notifyChanged`, which is `ContentResolver.notifyChange` on
+`content://com.bam.sshfs.documents/root`. The authority constant lives in `SafRoots` and must
+match the provider's `android:authorities` when it lands; until then the notification simply
+reaches no observers.
+
+`ConnectionProbe` (the host editor's "Test connection") is unchanged and still
+unauthenticated — see below.
 
 ## The transport — `…/net/ssh/`
 
