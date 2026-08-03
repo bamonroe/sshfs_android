@@ -17,6 +17,10 @@ interface KeyDao {
     @Query("SELECT * FROM ssh_keys WHERE id = :id")
     suspend fun byId(id: Long): SshKey?
 
+    /** Every row, once — the re-seal pass walks the whole table. */
+    @Query("SELECT * FROM ssh_keys ORDER BY id")
+    suspend fun all(): List<SshKey>
+
     /** How many identities point at this key — non-zero means deletion is blocked. */
     @Query("SELECT COUNT(*) FROM identities WHERE keyId = :id")
     suspend fun referenceCount(id: Long): Int

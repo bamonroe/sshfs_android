@@ -2,8 +2,14 @@ package com.bam.sshfs.net
 
 import android.content.Context
 import androidx.annotation.VisibleForTesting
+import com.bam.sshfs.R
+import com.bam.sshfs.crypto.AuthenticationRequiredException
 import com.bam.sshfs.crypto.KeystoreSecretStore
+import com.bam.sshfs.crypto.SecretAuthGate
+import com.bam.sshfs.crypto.Secrets
 import com.bam.sshfs.data.db.SshfsDatabase
+import com.bam.sshfs.data.model.Identity
+import com.bam.sshfs.data.model.SshKey
 import com.bam.sshfs.data.model.Host
 import com.bam.sshfs.net.ssh.CredentialResolver
 import com.bam.sshfs.net.ssh.FileKnownHostsStore
@@ -41,7 +47,7 @@ class ConnectionManager private constructor(context: Context) {
 
     private val app = context.applicationContext
     private val db = SshfsDatabase.get(app)
-    private val credentials = CredentialResolver(KeystoreSecretStore())
+    private val credentials = CredentialResolver(Secrets.store(app))
     private val connector = SshConnector(FileKnownHostsStore(File(app.filesDir, KNOWN_HOSTS)))
 
     private val lock = Any()
@@ -120,6 +126,7 @@ class ConnectionManager private constructor(context: Context) {
             ConnectionState.Failed("No identity is set for this host.")
         } else {
             val key = identity.keyId?.let { db.keyDao().byId(it) }
+            unlockIfGated(identity, key)
             // Credentials are resolved per re-dial, so a rotated password takes
             // effect on the next reconnect without a fresh handshake here.
             val session = ReconnectingSession {
@@ -134,6 +141,33 @@ class ConnectionManager private constructor(context: Context) {
         }
     } catch (e: Exception) {
         ConnectionState.Failed(e.message ?: e.javaClass.simpleName)
+    }
+
+    /**
+     * Open the unlock window before the handshake, when this host's secrets are gated.
+     *
+     * Prompting *here* rather than letting the decrypt fail keeps the biometric dialog
+     * on the connect the user just asked for. It also covers the re-dials:
+     * [ReconnectingSession] resolves credentials again from a background thread with no
+     * Activity to prompt from, and a re-dial inside the window needs no prompt at all.
+     *
+     * @throws AuthenticationRequiredException when the user declines, or when the app
+     *   is in the background and nothing can ask them.
+     */
+    private suspend fun unlockIfGated(identity: Identity, key: SshKey?) {
+        val gated = KeystoreSecretStore.needsAuthentication(
+            identity.passwordCiphertext,
+            key?.privateKeyCiphertext,
+            key?.passphraseCiphertext,
+        )
+        if (!gated) return
+        val unlocked = SecretAuthGate.authenticate(
+            app.getString(R.string.auth_prompt_title),
+            app.getString(R.string.auth_prompt_subtitle, identity.name),
+        )
+        if (!unlocked) {
+            throw AuthenticationRequiredException(app.getString(R.string.auth_prompt_declined))
+        }
     }
 
     companion object {

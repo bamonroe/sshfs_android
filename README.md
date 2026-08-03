@@ -36,7 +36,28 @@ Two things worth knowing:
   are re-encrypted the next time you edit them — open and re-save any key or identity from
   an older install to have it properly sealed.
 
-A biometric or PIN prompt before secrets are unlocked is planned but not implemented yet.
+### Requiring a fingerprint or PIN
+
+By default the app can unlock your stored secrets whenever it is running. Turn on **Settings →
+Require authentication** to put a fingerprint (or face, or your device PIN/pattern/password) in
+front of them: the secrets are re-sealed under a Keystore key Android will only use while you
+are authenticated.
+
+What that means day to day:
+
+- You are prompted when you **connect** a host whose credentials are protected, and when you
+  **save** a new key or password. One unlock covers the next **5 minutes**, so reconnects and
+  browsing in the file picker don't keep asking.
+- Anything that needs a secret while the app is in the **background** — a reconnect after the
+  link drops, say — fails instead of prompting, because there is no window to show the dialog
+  in. Open the app and connect again.
+- Turning the switch on or off **re-seals every stored secret**, which takes a moment and needs
+  one authentication first; the switch moves once the pass finishes and tells you how many
+  secrets it converted.
+- The switch is **disabled** if your device has no screen lock and no enrolled biometric — set
+  one up first.
+- A device credential reset is even less forgiving here: the protected key is dropped along
+  with the lock screen, so keep a backup of anything you can't regenerate.
 
 ## Managing keys
 
@@ -130,8 +151,9 @@ deleting only asks for a confirmation; the server itself is untouched.
 
 ## Getting around, and connecting
 
-The bottom bar switches between four sections — **Connections**, **Hosts**, **Identities**
-and **Keys**. Each keeps its own list and controls; the tab you're on survives rotation.
+The bottom bar switches between five sections — **Connections**, **Hosts**, **Identities**,
+**Keys** and **Settings**. Each keeps its own list and controls; the tab you're on survives
+rotation.
 
 The **Connections** tab lists every host you've added with its current state — *Not
 connected*, *Connecting…*, *Connected* (with the server's version banner), or *Failed* with
@@ -223,7 +245,9 @@ BAM_STORE_PUBLISH=0 ./build.sh /path/to/sshfs_android :app:connectedDebugAndroid
 ```
 
 Those tests publish an in-memory fake server as a SAF root, so they need no SSH server
-either; only the Keystore test touches real device hardware.
+either; only the Keystore test touches real device hardware. The **Require authentication**
+path is the one thing no suite covers — it needs a real enrolled fingerprint or PIN and
+someone to tap the prompt, so test it by hand on a device.
 
 ## Run on the emulator
 

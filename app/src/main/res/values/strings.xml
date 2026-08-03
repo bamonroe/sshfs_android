@@ -115,6 +115,23 @@
     <string name="action_connect">Connect</string>
     <string name="action_disconnect">Disconnect</string>
 
+    <!-- Settings screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_require_auth">Require authentication</string>
+    <string name="settings_require_auth_body">Ask for a fingerprint or the device PIN before a stored key or password is unlocked. One unlock covers the next 5 minutes. A device credential reset makes the stored secrets unreadable.</string>
+    <string name="settings_require_auth_unavailable">Unavailable: set a screen lock or enrol a fingerprint first.</string>
+    <string name="settings_reseal_done">Re-sealed %1$d secrets.</string>
+    <string name="settings_reseal_partial">Re-sealed %1$d secrets; %2$d could not be read.</string>
+
+    <!-- The biometric / device-credential prompt -->
+    <string name="auth_prompt_title">Unlock stored secrets</string>
+    <string name="auth_prompt_subtitle">Needed to connect as “%1$s”</string>
+    <string name="auth_prompt_save_key">Needed to store this key</string>
+    <string name="auth_prompt_save_password">Needed to store this password</string>
+    <string name="auth_prompt_enable">Confirm to start requiring authentication</string>
+    <string name="auth_prompt_disable">Confirm to stop requiring authentication</string>
+    <string name="auth_prompt_declined">Authentication was not completed, so the stored secrets stayed locked.</string>
+
     <!-- The foreground service that holds the SSH sessions open. -->
     <string name="notification_channel_connections">Connections</string>
     <string name="notification_channel_connections_desc">Shows which servers are currently connected and available in the file picker.</string>

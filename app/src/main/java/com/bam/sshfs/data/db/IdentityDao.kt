@@ -17,6 +17,10 @@ interface IdentityDao {
     @Query("SELECT * FROM identities WHERE id = :id")
     suspend fun byId(id: Long): Identity?
 
+    /** Every row, once — the re-seal pass walks the whole table. */
+    @Query("SELECT * FROM identities ORDER BY id")
+    suspend fun all(): List<Identity>
+
     /** How many hosts default to this identity — non-zero means deletion is blocked. */
     @Query("SELECT COUNT(*) FROM hosts WHERE defaultIdentityId = :id")
     suspend fun referenceCount(id: Long): Int

@@ -19,14 +19,3 @@ add_proposed_work = "Add proposed work as a new task rather than losing it."
 remove_dropped_items = "Remove dropped items with a one-line why."
 finish_work = "When a task is fully finished (built, tested, documented), run `scripts/todo.sh done <id>` to move it to FINISHED.toml."
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
-
-[[task]]
-id = "biometric-device-credential-gate-before-unlocking-secrets"
-title = "Biometric / device-credential gate before unlocking secrets"
-description = "KeystoreSecretStore seals secrets under a plain Keystore AES key. Add an optional user-authentication-gated key (setUserAuthenticationRequired) with a BiometricPrompt in front of it, so decrypting a private key or password needs a fingerprint or device PIN. Needs a new blob prefix (v2:) so both schemes can coexist, plus a settings toggle and a re-seal pass when it is turned on or off."
-status = "active"
-category = "feature"
-urgency = "normal"
-order = 150
-created = 2026-08-03
-tags = []

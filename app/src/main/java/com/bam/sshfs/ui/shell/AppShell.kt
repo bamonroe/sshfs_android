@@ -24,9 +24,10 @@ import com.bam.sshfs.ui.connections.ConnectionsScreen
 import com.bam.sshfs.ui.hosts.HostsScreen
 import com.bam.sshfs.ui.identities.IdentitiesScreen
 import com.bam.sshfs.ui.keys.KeysScreen
+import com.bam.sshfs.ui.settings.SettingsScreen
 
 /**
- * The single-activity shell: a bottom nav bar over the four sections.
+ * The single-activity shell: a bottom nav bar over the sections in [Destination].
  *
  * Each section keeps its own `Scaffold` (top bar, FAB, snackbar); this only owns the
  * nav bar and hands the sections the insets left over. Switching tabs re-composes the
@@ -61,6 +62,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                 Destination.Hosts -> HostsScreen()
                 Destination.Identities -> IdentitiesScreen()
                 Destination.Keys -> KeysScreen()
+                Destination.Settings -> SettingsScreen()
             }
         }
     }

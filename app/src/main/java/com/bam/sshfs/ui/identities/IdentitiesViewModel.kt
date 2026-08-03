@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.bam.sshfs.R
-import com.bam.sshfs.crypto.KeystoreSecretStore
 import com.bam.sshfs.crypto.SecretStore
+import com.bam.sshfs.crypto.Secrets
 import com.bam.sshfs.data.db.SshfsDatabase
 import com.bam.sshfs.data.model.Identity
 import com.bam.sshfs.data.model.SshKey
@@ -17,7 +17,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** A delete that needs the user to confirm unlinking the hosts defaulting to the identity. */
 data class UnlinkIdentityPrompt(val identity: Identity, val references: Int)
@@ -34,7 +36,7 @@ class IdentitiesViewModel(
         app,
         SshfsDatabase.get(app).let { IdentityRepository(it.identityDao(), it.hostDao()) },
         SshfsDatabase.get(app).let { KeyRepository(it.keyDao(), it.identityDao()) },
-        KeystoreSecretStore(),
+        Secrets.store(app),
     )
 
     val identities: StateFlow<List<Identity>> = repo.observeAll()
@@ -83,11 +85,24 @@ class IdentitiesViewModel(
         }
     }
 
-    /** Keep, clear, or replace the stored password according to the draft's intent. */
-    private fun passwordFor(form: IdentityForm, existing: Identity?): String? = when {
+    /**
+     * Keep, clear, or replace the stored password according to the draft's intent.
+     *
+     * Only the replace branch touches the Keystore — hence the unlock prompt and the
+     * IO hop are inside it, so an unrelated rename never asks for a fingerprint.
+     */
+    private suspend fun passwordFor(form: IdentityForm, existing: Identity?): String? = when {
         form.password == null -> existing?.passwordCiphertext
         form.password.isBlank() -> null
-        else -> secrets.encrypt(form.password)
+        else -> {
+            val app = getApplication<Application>()
+            Secrets.unlockForWrite(
+                app,
+                app.getString(R.string.auth_prompt_title),
+                app.getString(R.string.auth_prompt_save_password),
+            )
+            withContext(Dispatchers.IO) { secrets.encrypt(form.password) }
+        }
     }
 
     private fun message(error: IdentityFormError): String = getApplication<Application>().getString(

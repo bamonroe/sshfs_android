@@ -12,12 +12,14 @@ how a user builds and runs the app.
 | `…/data/model/` | Room entities: `SshKey`, `Identity`, `Host` |
 | `…/data/db/` | `SshfsDatabase`, the DAOs, and the enum `Converters` |
 | `…/data/repo/` | Repositories: CRUD plus the referential-integrity rules |
-| `…/crypto/` | Key generation, import/parsing, OpenSSH text formats, secret storage |
+| `…/data/settings/` | `AppSettings`: the user's preference switches (no secrets) |
+| `…/crypto/` | Key generation, import/parsing, OpenSSH text formats, secret storage, the authentication gate |
 | `…/ui/` | Compose screens and the Material 3 theme |
 | `…/ui/keys/` | The Keys screen: list, generate, import, show/copy public key |
 | `…/ui/identities/` | The Identities screen: list, editor form + validation, delete/unlink |
 | `…/ui/hosts/` | The Hosts screen: list, editor form + validation, connection test |
 | `…/ui/connections/` | The Connections screen: per-host state and the connect/disconnect controls |
+| `…/ui/settings/` | The Settings screen: the authentication-gate switch and its re-seal pass |
 | `…/ui/shell/` | The single-activity shell: the `Destination` enum and its bottom nav bar |
 | `…/net/` | Transport-facing helpers, plus the connection manager and its foreground service |
 | `…/net/ssh/` | The SSH/SFTP transport: connect, host-key trust, remote file operations |
@@ -136,16 +138,18 @@ is seconds of CPU and must not touch the main thread.
 Keystore to encrypt and decrypt, but can never read the key itself. Rooting or pulling the
 database therefore yields blobs, not credentials.
 
-The stored blob is `v1:` + Base64(12-byte IV ‖ ciphertext+GCM tag). Two consequences worth
-knowing:
+The stored blob is `<prefix>` + Base64(12-byte IV ‖ ciphertext+GCM tag), where the prefix says
+which key sealed it: `v1:` the plain key, `v2:` the authentication-gated one (below). Two
+consequences worth knowing:
 
 - **The IV is per-call and chosen by the Keystore** (`setRandomizedEncryptionRequired`), so
   two identities with the same password produce different rows, and GCM's never-reuse-an-IV
   rule can't be broken by a call-site mistake.
-- **The `v1:` prefix is the format handle.** A blob *without* it predates encryption and is
+- **The prefix is the format handle.** A blob *without* one predates encryption and is
   read back as plain Base64, so rows written by earlier builds keep working; they are
-  re-sealed the next time that secret is written. A future scheme (a
-  user-authentication-gated key, say) gets its own prefix rather than an ambiguous blob.
+  re-sealed the next time that secret is written. Each scheme gets its own prefix rather than
+  an ambiguous blob, and *reads* dispatch on the prefix alone — never on the current setting —
+  so flipping the setting can never orphan a row.
 
 Failures — a truncated blob, a tampered one that fails the GCM tag, or a Keystore key wiped
 by a device-credential reset — surface as `SecretStoreException` and reach the user through
@@ -156,7 +160,55 @@ password must be re-entered.
 unit tests, which run on a desktop JVM with no `AndroidKeyStore` provider. The real
 round-trip is covered by the instrumented test in `app/src/androidTest/…/crypto/`.
 
-A biometric / device-credential gate before unlocking is not wired up yet — see `TODO.toml`.
+### The authentication gate — `v2:` blobs, and who may prompt
+
+With **Settings → Require authentication** on, secrets are sealed under a *second* Keystore key
+(alias `com.bam.sshfs.secrets.gated`) built with `setUserAuthenticationRequired(true)`, and the
+blobs get the `v2:` prefix. Both keys stay present; only the prefix decides which one opens a
+given row.
+
+Four decisions hold this together:
+
+- **The gate is time-bound, not per-use.** The gated key is created with
+  `setUserAuthenticationParameters(300s, BIOMETRIC_STRONG | DEVICE_CREDENTIAL)` (and the
+  deprecated `setUserAuthenticationValidityDurationSeconds` below API 30). One prompt therefore
+  covers the connect, the re-dials and the provider's reads for five minutes. The alternative —
+  an auth-per-use key — would mean threading a `BiometricPrompt.CryptoObject` through
+  `CredentialResolver` and the SFTP transport, and would re-prompt on every reconnect from a
+  background thread that has no Activity to prompt from.
+- **`DEVICE_CREDENTIAL` is always allowed**, so a device with a PIN but no enrolled fingerprint
+  can still use the gate. When the device has neither, `BiometricAuthGate.canAuthenticate`
+  is false and the switch is disabled — a gated key can't even be generated there.
+- **Prompting is decoupled from decrypting.** `SecretAuthGate` is a process-wide holder for
+  whatever can currently show a prompt; `MainActivity` registers a `BiometricAuthGate` in
+  `onStart` and clears it in `onStop`. Code that hits a locked key runs on a binder thread or
+  inside the connection service and can't reach an Activity, so it asks the holder. With nothing
+  registered, `authenticate` returns false immediately rather than blocking on a dialog no one
+  can see, and the caller gets `AuthenticationRequiredException` — a *recoverable* failure,
+  distinct from `SecretStoreException`.
+- **Connecting prompts up front.** `ConnectionManager.open` checks
+  `KeystoreSecretStore.needsAuthentication(...)` on the identity's and key's blobs and opens the
+  window *before* the handshake, so the dialog lands on the connect the user just asked for
+  rather than surfacing as a mid-listing failure. Sealing needs the window open too (the gated
+  key requires authentication to encrypt as well), which is why the editor ViewModels call
+  `Secrets.unlockForWrite` before saving a key or a password.
+
+Flipping the setting runs `SecretResealer`, which walks both tables and rewrites every blob
+under the new scheme — otherwise "require authentication" would only apply to secrets saved
+after the switch. It runs while the user is still authenticated, because converting a `v2:` blob
+back means reading it. Rows are converted one at a time and a blob that won't open is *left
+alone* and counted as a failure: overwriting it would destroy the only copy. A part-finished
+pass is therefore safe — both prefixes still read, and re-running finishes the job.
+
+`Secrets.store(context)` is the single place that builds the app's `SecretStore`, binding its
+write scheme to `AppSettings.requireAuthentication`. The setting itself lives in plain
+`SharedPreferences` (`…/data/settings/AppSettings`) — it is a switch, not a secret — and is read
+synchronously because every seal consults it from an arbitrary thread.
+
+The gated round-trip has **no automated test**: it needs a real enrolled credential and a user
+tapping the prompt, which the emulator harness can't supply. What is covered is the part that
+can be: prefix dispatch and `needsAuthentication` in the unit tests, and `SecretAuthGate`'s
+register/prompt/handoff logic with a fake gate.
 
 ## UI — editing secrets you can't read back
 
@@ -198,7 +250,7 @@ address is whether that address answers at all. A host setting `ProxyJump` is pr
 
 ### The shell is an enum, and connection state is a singleton
 
-`Destination` (in `…/ui/shell/`) enumerates the four sections with their label and icon, so
+`Destination` (in `…/ui/shell/`) enumerates the sections with their label and icon, so
 the nav bar is generated from it — adding a section is one enum entry, not a second list to
 keep in sync. `AppShell` owns only the nav bar; each section keeps its own `Scaffold`, top
 bar and FAB, which is why switching tabs can throw the section composable away: the state

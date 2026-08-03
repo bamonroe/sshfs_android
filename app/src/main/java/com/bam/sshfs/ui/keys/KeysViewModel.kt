@@ -3,12 +3,13 @@ package com.bam.sshfs.ui.keys
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.bam.sshfs.R
 import com.bam.sshfs.crypto.KeyImporter
 import com.bam.sshfs.crypto.KeyMaterial
 import com.bam.sshfs.crypto.KeyMaterialException
 import com.bam.sshfs.crypto.KeyPairFactory
-import com.bam.sshfs.crypto.KeystoreSecretStore
 import com.bam.sshfs.crypto.SecretStore
+import com.bam.sshfs.crypto.Secrets
 import com.bam.sshfs.data.db.SshfsDatabase
 import com.bam.sshfs.data.model.KeyOrigin
 import com.bam.sshfs.data.model.KeyType
@@ -37,7 +38,7 @@ class KeysViewModel(
     constructor(app: Application) : this(
         app,
         SshfsDatabase.get(app).let { KeyRepository(it.keyDao(), it.identityDao()) },
-        KeystoreSecretStore(),
+        Secrets.store(app),
     )
 
     val keys: StateFlow<List<SshKey>> = repo.observeAll()
@@ -91,14 +92,26 @@ class KeysViewModel(
         origin: KeyOrigin,
         passphrase: String?,
     ) {
+        val app = getApplication<Application>()
+        // With the gate on, sealing needs the user authenticated too — ask once, here,
+        // rather than letting the Keystore refuse the write half-way through.
+        Secrets.unlockForWrite(
+            app,
+            app.getString(R.string.auth_prompt_title),
+            app.getString(R.string.auth_prompt_save_key),
+        )
+        // Keystore calls are IPC to keystore2 and must not sit on the main thread.
+        val sealed = withContext(Dispatchers.IO) {
+            secrets.encrypt(material.privateKey) to passphrase?.let { secrets.encrypt(it) }
+        }
         repo.save(
             SshKey(
                 name = name.trim(),
                 type = material.type,
-                privateKeyCiphertext = secrets.encrypt(material.privateKey),
+                privateKeyCiphertext = sealed.first,
                 publicKey = material.publicKey,
                 hasPassphrase = material.encrypted,
-                passphraseCiphertext = passphrase?.let { secrets.encrypt(it) },
+                passphraseCiphertext = sealed.second,
                 origin = origin,
                 createdAt = System.currentTimeMillis(),
             ),

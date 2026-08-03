@@ -77,6 +77,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.1")
+    // BiometricPrompt gates the authentication-required Keystore key. It needs a
+    // FragmentActivity, which is why MainActivity extends one rather than
+    // ComponentActivity.
+    implementation("androidx.biometric:biometric:1.1.0")
+    // Biometric 1.1.0 pins fragment 1.2.x, whose FragmentActivity breaks
+    // registerForActivityResult (the notification-permission ask). Force a version
+    // that implements it properly — lint fails the build otherwise.
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
 
     // SSHJ parses imported private keys — including bcrypt-KDF OpenSSH v1 blocks —
     // and will carry the SFTP transport later. Bouncy Castle backs both it and the
