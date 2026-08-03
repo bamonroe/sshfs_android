@@ -1,6 +1,7 @@
 package com.bam.sshfs.net
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import com.bam.sshfs.crypto.KeystoreSecretStore
 import com.bam.sshfs.data.db.SshfsDatabase
 import com.bam.sshfs.data.model.Host
@@ -70,6 +71,23 @@ class ConnectionManager private constructor(context: Context) {
         if (sessionOf(host.id) != null) return
         ConnectionRegistry.set(host.id, ConnectionState.Connecting)
         ConnectionRegistry.set(host.id, withContext(Dispatchers.IO) { open(host) })
+        SafRoots.notifyChanged(app)
+    }
+
+    /**
+     * Publish an already-open [session] for [host] as if it had just been dialled.
+     *
+     * The seam the instrumented SAF tests use: driving the provider through
+     * `ContentResolver` needs a connected root, and a real handshake would make the
+     * test depend on a reachable server. Nothing in the app calls this.
+     */
+    @VisibleForTesting
+    fun adopt(host: Host, rootPath: String, session: SftpSession) {
+        synchronized(lock) { live[host.id] = ConnectedHost(host, rootPath, session) }
+        ConnectionRegistry.set(
+            host.id,
+            ConnectionState.Connected(session.serverVersion, session.fingerprint),
+        )
         SafRoots.notifyChanged(app)
     }
 

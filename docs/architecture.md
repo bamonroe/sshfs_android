@@ -429,3 +429,30 @@ operation if it isn't kept. Delete and rename are properties of the *parent* dir
 POSIX; the parent isn't in hand while building a row, so the entry's own writability stands in
 as the closest available proxy. Roots add `SUPPORTS_CREATE`, which is what lets another app
 pick a server as a save destination.
+
+## Tests — what is covered where, and why
+
+How to *run* both suites is in `README.md`; this section owns the shape of them.
+
+| Suite | Lives in | Covers |
+|-------|----------|--------|
+| Unit (JVM) | `app/src/test/` | The data model and enum converters, the crypto layer, the pure SAF value types (`DocumentId`, `DocumentMode`, `DocumentNames`, `MetadataCache`), the form validation, `ExtraArgs`/`SshOptions`/`KnownHosts`/`RemotePaths`, and `SshjSftpSession` |
+| Instrumented | `app/src/androidTest/` | `KeystoreSecretStore` against the real `AndroidKeyStore`, and the `DocumentsProvider` through `ContentResolver` |
+
+Two decisions shape it:
+
+**The SFTP wrapper is tested against a real server, not a mock.** `EmbeddedSftpServer`
+(in the unit sources) starts Apache MINA SSHD in the test JVM over a temp directory and
+hands back an `SshjSftpSession` connected to it. What that wrapper *does* is translate —
+SFTP attributes into `RemoteEntry`, seconds into milliseconds, open flags into `OpenMode`,
+SSHJ's failures into `SshTransportException` — and a mocked `SFTPClient` would only assert
+that we call the methods we already decided to call. The server binds an ephemeral port and
+needs no network access.
+
+**The SAF tests go through the binder, and stub the transport.** The provider is exercised
+by `ContentResolver`/`DocumentsContract` calls rather than by touching the class directly,
+because the contract SAF holds us to is the cursors, document ids, and descriptors that come
+back out of the resolver. Underneath, `ConnectionManager.adopt` publishes a `FakeSftpSession`
+— an in-memory tree — as a connected root; that method exists **only** for these tests, and
+keeps them off any real server. So the two suites meet in the middle: the transport is real
+where the provider is faked, and faked where the provider is real.

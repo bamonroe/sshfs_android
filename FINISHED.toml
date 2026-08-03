@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "tests-unit-plus-instrumented-saf-coverage"
+title = "Tests: unit plus instrumented SAF coverage"
+description = "Unit tests for the data model, credential encryption, and the SFTP wrapper against a local test SSH server; instrumented tests driving the DocumentsProvider through ContentResolver on the emulator harness."
+status = "finished"
+category = "test"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["test"]
+
+[[task]]
 id = "metadata-cache-for-listings-and-stats"
 title = "Metadata cache for listings and stats"
 description = "Short-TTL in-memory cache of directory listings and stat results, invalidated on writes and on reconnect, because file pickers query aggressively and SFTP round-trips are slow."

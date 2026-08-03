@@ -15,7 +15,8 @@ over Connections, Hosts, Identities and Keys. The Keys, Identities and Hosts scr
 fully working, and connecting a host now opens a real authenticated SFTP session held by a
 foreground service. Each connected host appears as a root in the system file picker, and files
 open, save, create, rename and delete from there — streaming over SFTP rather than downloading.
-Still to come: a metadata cache for listings, and broader test coverage (see `TODO.toml`).
+Listings and stats are cached briefly so the picker stays responsive, and the app ships with
+unit and instrumented test suites (see [Tests](#tests)). Still to come: see `TODO.toml`.
 
 ## How your credentials are stored
 
@@ -200,6 +201,29 @@ Defaults to `:app:assembleDebug`; pass another Gradle task as a second argument
 (`:app:lint`, `:app:test`, `:app:assembleRelease`). The APK lands in
 `app/build/outputs/apk/debug/app-debug.apk`. Drop `BAM_STORE_PUBLISH=0` to also publish
 the build to the BAM Store.
+
+## Tests
+
+```sh
+# Unit tests — plain JVM, no device needed
+BAM_STORE_PUBLISH=0 /data/android/build.sh /path/to/sshfs_android :app:testDebugUnitTest
+```
+
+The unit suite covers the data model, the key/credential crypto, the SAF value types, and
+the SFTP wrapper — the last one against a **real SFTP server started inside the test JVM**
+(Apache MINA SSHD), so no network or outside server is involved.
+
+The instrumented suite runs on the emulator and drives the `DocumentsProvider` the way the
+file picker does, through `ContentResolver`:
+
+```sh
+cd /data/android
+.claude/skills/android-dev/scripts/emulator.sh up     # boot the headless emulator first
+BAM_STORE_PUBLISH=0 ./build.sh /path/to/sshfs_android :app:connectedDebugAndroidTest
+```
+
+Those tests publish an in-memory fake server as a SAF root, so they need no SSH server
+either; only the Keystore test touches real device hardware.
 
 ## Run on the emulator
 

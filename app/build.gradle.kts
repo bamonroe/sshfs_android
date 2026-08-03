@@ -94,6 +94,13 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // A real SFTP server in-process, so SshjSftpSession is tested against the
+    // protocol rather than against a mock of it.
+    testImplementation("org.apache.sshd:sshd-core:2.12.1")
+    testImplementation("org.apache.sshd:sshd-sftp:2.12.1")
+    testImplementation("org.slf4j:slf4j-simple:2.0.13")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 }

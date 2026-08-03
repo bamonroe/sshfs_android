@@ -21,17 +21,6 @@ finish_work = "When a task is fully finished (built, tested, documented), run `s
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
 
 [[task]]
-id = "tests-unit-plus-instrumented-saf-coverage"
-title = "Tests: unit plus instrumented SAF coverage"
-description = "Unit tests for the data model, credential encryption, and the SFTP wrapper against a local test SSH server; instrumented tests driving the DocumentsProvider through ContentResolver on the emulator harness."
-status = "active"
-category = "test"
-urgency = "normal"
-order = 130
-created = 2026-08-03
-tags = ["test"]
-
-[[task]]
 id = "readme-and-architecture-docs-for-the-shipped-app"
 title = "README and architecture docs for the shipped app"
 description = "Write README.md (what it is, install, configuring keys/identities/hosts, how the roots show up in the file picker, known limits such as apps needing a raw file path) and fill docs/architecture.md with the data flow, module layout, and design decisions."
