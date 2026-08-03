@@ -20,6 +20,7 @@ how a user builds and runs the app.
 | `…/ui/connections/` | The Connections screen: per-host state and the connect/disconnect controls |
 | `…/ui/shell/` | The single-activity shell: the `Destination` enum and its bottom nav bar |
 | `…/net/` | Transport-facing helpers: `ExtraArgs`, `ConnectionProbe`, `ConnectionRegistry` |
+| `…/net/ssh/` | The SSH/SFTP transport: connect, host-key trust, remote file operations |
 | `app/schemas/` | Room's exported schema JSON (generated; also an androidTest asset) |
 | `docs/` | The spoke docs — this file and `tools.md` |
 
@@ -209,7 +210,72 @@ roots all read the same map. Until that service lands, `ConnectionsViewModel` wr
 registry using the `ConnectionProbe` handshake, so *connected* means reachable, not
 authenticated.
 
+## The transport — `…/net/ssh/`
+
+SSHJ is wrapped, never used directly outside this package. The seam is **`SftpSession`**: a
+blocking interface of exactly the operations SAF needs (`list`, `stat`, `canonicalize`,
+`open`, `mkdir`, `rename`, `delete`) returning **`RemoteEntry`** and **`RemoteHandle`** —
+plain values with no SSHJ types in them. The `DocumentsProvider` and the metadata cache work
+in those, so the library stops at this package's edge and could be swapped without touching
+them.
+
+| File | What it owns |
+|------|--------------|
+| `SftpSession.kt` | The interface, plus `RemoteEntry` / `RemoteHandle` |
+| `SshjSftpSession.kt` | The SSHJ implementation, and attribute → `RemoteEntry` mapping |
+| `SshConnector.kt` | The whole connect recipe: options, verification, jump chain, auth |
+| `SshOptions.kt` | The `ssh_config` options this layer honours, parsed from `ExtraArgs` |
+| `KnownHosts.kt` | The host-key trust store (in-memory and file-backed) and fingerprints |
+| `TofuHostKeyVerifier.kt` | Trust-on-first-use verification |
+| `ReconnectingSession.kt` | Re-dials underneath a live session; `RetryPolicy` |
+| `SshCredentials.kt` | Decrypted credentials, and the `CredentialResolver` that opens them |
+| `SshTransportException.kt`, `ErrorMapping.kt` | Failure classification |
+| `RemotePaths.kt` | POSIX path arithmetic for remote paths |
+
+### Host keys are trusted on first use, and a change is never silent
+
+`TofuHostKeyVerifier` remembers a fingerprint the first time an address answers and demands
+the same key afterwards. A **changed** key is always refused — that is the one attack
+host-key checking exists to catch — and clearing it is a deliberate user action
+(`KnownHostsStore.forget`), never something the transport does for itself. Setting
+`StrictHostKeyChecking yes` in a host's extra arguments turns first contact into a refusal
+too. Fingerprints are OpenSSH's `SHA256:…` spelling, so they can be compared against what
+`ssh-keyscan` prints.
+
+The store is a **plain text file**, one `host:port SHA256:…` line per entry, rather than a
+Room table: it holds no secrets, it is the artefact a user might want to inspect or delete by
+hand, and the transport must be able to read it without the database open.
+
+### Which `ssh_config` options actually do something
+
+`SshOptions.from` reads the host's extra-argument text (parsed by
+[`ExtraArgs`](#extra-connect-arguments-live-in-netextraargs)) and honours `ProxyJump`,
+`ConnectTimeout`, `ServerAliveInterval`, `Compression`, and `StrictHostKeyChecking`.
+Everything else is collected in `SshOptions.ignored` rather than dropped, so the UI can say a
+line had no effect instead of leaving the user to guess. `ProxyJump` takes a comma-separated
+`[user@]host[:port]` chain; each hop is dialled *through* the previous one over a
+`direct-tcpip` channel, and closing the session tears the chain down in reverse so a jump host
+never goes away before what tunnels through it.
+
+### Credentials are decrypted for the length of a handshake
+
+`CredentialResolver` turns an `Identity` and its `SshKey` into a short-lived `SshCredentials`
+using the same [`SecretStore`](#secretstore--how-secrets-are-sealed-at-rest) the editors write
+through. Nothing holds one across connections. Authentication tries the **key first, then the
+password** — the order `ssh` itself prefers — so an identity carrying both still connects when
+the server hasn't got the key.
+
+### Failures are classified, because only some are worth retrying
+
+Every method throws `SshTransportException` carrying an `SshFailure`: `NETWORK`,
+`AUTHENTICATION`, `HOST_KEY_UNKNOWN`, `HOST_KEY_CHANGED`, or `REMOTE`. `ReconnectingSession`
+retries **only** `NETWORK` — it closes the dead session, re-dials through the connector, and
+runs the call again with exponential backoff (`RetryPolicy`, three attempts by default).
+Anything the server actually answered, such as a missing file or a rejected password, passes
+straight through: retrying it would repeat the same answer, and retrying a rejected password
+would lock the account out. The session is connected **lazily** on first use and guarded by a
+lock, because the `DocumentsProvider` calls in from several handler threads at once.
+
 ## Data flow — SAF and the transport
 
-*To be filled in as the DocumentsProvider, transport, and connection service land (see
-`TODO.toml`).*
+*To be filled in as the DocumentsProvider and connection service land (see `TODO.toml`).*

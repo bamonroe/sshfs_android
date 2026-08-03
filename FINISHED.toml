@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "ssh-sftp-transport-layer"
+title = "SSH/SFTP transport layer"
+description = "Wrap SSHJ behind a small internal interface: connect using a Host plus Identity, host-key verification with a trust-on-first-use known-hosts store, proxy/jump support from the host's extra args, and SFTP operations (list, stat, open, read, write, mkdir, rename, delete). Reconnect on transient failure."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["ssh"]
+
+[[task]]
 id = "encrypt-credentials-at-rest-with-the-android-keystore"
 title = "Encrypt credentials at rest with the Android Keystore"
 description = "Store private keys and passwords encrypted under a Keystore-backed key (EncryptedSharedPreferences or an encrypted Room column); nothing sensitive lands in plaintext prefs or the database. Optional biometric or device-credential gate before unlocking."

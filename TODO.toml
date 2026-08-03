@@ -21,17 +21,6 @@ finish_work = "When a task is fully finished (built, tested, documented), run `s
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
 
 [[task]]
-id = "ssh-sftp-transport-layer"
-title = "SSH/SFTP transport layer"
-description = "Wrap SSHJ behind a small internal interface: connect using a Host plus Identity, host-key verification with a trust-on-first-use known-hosts store, proxy/jump support from the host's extra args, and SFTP operations (list, stat, open, read, write, mkdir, rename, delete). Reconnect on transient failure."
-status = "active"
-category = "feature"
-urgency = "high"
-order = 80
-created = 2026-08-03
-tags = ["ssh"]
-
-[[task]]
 id = "connection-manager-foreground-service"
 title = "Connection manager foreground service"
 description = "Foreground service owning the live SSH sessions and a persistent notification listing connected hosts, so Android does not kill connections while another app browses. Exposes connect and disconnect, and calls ContentResolver.notifyChange on the roots URI whenever the connected set changes."

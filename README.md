@@ -96,11 +96,31 @@ A **host** is a server you want to browse. **Add host** asks for:
   A line with a keyword but no value is flagged inline and blocks the save; which options
   are meaningful is left to the transport rather than policed by the editor.
 
+  The transport currently acts on five of them — anything else is parsed, kept, and ignored:
+
+  | Option | Effect |
+  |--------|--------|
+  | `ProxyJump` | A comma-separated `[user@]host[:port]` chain; each hop is tunnelled through the one before it |
+  | `ConnectTimeout` | Seconds to wait for the handshake (default 15) |
+  | `ServerAliveInterval` | Seconds between keepalives; omit or `0` to send none |
+  | `Compression` | `yes` turns compression on |
+  | `StrictHostKeyChecking` | `yes` refuses a server whose key isn't already trusted |
+
 **Test connection** dials the draft *without saving it*, so you can check an address as you
 type. Success reports the server's version banner and its host-key fingerprint; failure
 reports why — an unknown host name, a refused connection, or a timeout. The test stops
 before signing in, so it tells you the server is reachable, not that your credentials work.
 A host with `ProxyJump` set is dialled directly and the result says so.
+
+### Host keys
+
+The first time an address answers, its host key is trusted and remembered — the same
+trust-on-first-use rule `ssh` uses. Every later connection must present that same key; if it
+has **changed**, the connection is refused outright and stays refused until you say the change
+was legitimate, because that is exactly what an intercepted connection looks like. Put
+`StrictHostKeyChecking yes` in a host's extra arguments to refuse *unknown* keys too, and
+compare the `SHA256:…` fingerprint the app shows against what `ssh-keyscan` prints on the
+server.
 
 The **More** menu on a host offers **Edit** and **Delete**. Nothing references a host, so
 deleting only asks for a confirmation; the server itself is untouched.
