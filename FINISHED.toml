@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "define-the-host-identity-key-data-model"
+title = "Define the Host / Identity / Key data model"
+description = "Three separate first-class entities persisted with Room: Key (name, type, private+public material, passphrase state, imported-or-generated), Identity (name, username, optional password, optional link to a Key), Host (name, address, port, optional default Identity, freeform extra connect args for proxy/jump/ssh options). Identity references a Key; Host references a default Identity; deleting a referenced row is blocked or nulled explicitly. Record the schema in docs/architecture.md."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["data"]
+
+[[task]]
 id = "scaffold-the-gradle-android-project-in-a-container"
 title = "Scaffold the Gradle Android project in a container"
 description = "Create the Kotlin Android app module (minSdk 26 for openProxyFileDescriptor, target current), Material 3 theme, and Gradle wrapper. Build it through the existing containerized pipeline at /data/android (./build.sh <project-dir> :app:assembleDebug) and test on its headless emulator — do not add a project-local Dockerfile and do not build against the host toolchain. Record the build/run steps in README.md."
