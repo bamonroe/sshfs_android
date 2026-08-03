@@ -32,6 +32,7 @@ import com.bam.sshfs.data.model.SshKey
 fun KeyListItem(
     key: SshKey,
     onShowPublicKey: () -> Unit,
+    onExportPrivateKey: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -60,7 +61,7 @@ fun KeyListItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            KeyActionsMenu(onShowPublicKey, onRename, onDelete)
+            KeyActionsMenu(onShowPublicKey, onExportPrivateKey, onRename, onDelete)
         }
     }
 }
@@ -78,6 +79,7 @@ private fun subtitle(key: SshKey): String {
 @Composable
 private fun KeyActionsMenu(
     onShowPublicKey: () -> Unit,
+    onExportPrivateKey: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -90,6 +92,10 @@ private fun KeyActionsMenu(
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_show_public_key)) },
                 onClick = { open = false; onShowPublicKey() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_export_private_key)) },
+                onClick = { open = false; onExportPrivateKey() },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_rename)) },

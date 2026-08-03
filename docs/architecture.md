@@ -109,6 +109,7 @@ plain JVM unit tests in `app/src/test/`.
 |------|-----|
 | `KeyPairFactory` | Generates Ed25519 and RSA-3072 pairs on-device with Bouncy Castle |
 | `KeyImporter` | Parses a pasted or picked private key, and reports whether it is passphrase-protected |
+| `KeyExport` | The file name and framing for handing a stored private key back to the user |
 | `OpenSshFormat` | The `ssh-ed25519 AAAA… comment` line, its `SHA256:` fingerprint, and PEM wrapping |
 | `SecretStore` | Plaintext ⇄ the ciphertext blob a row stores |
 | `SshSecurity` | Installs the full Bouncy Castle provider over Android's cut-down one |
@@ -126,6 +127,13 @@ bcrypt-KDF-encrypted OpenSSH v1 blocks. `KeyImporter.isEncrypted` inspects the t
 (`Proc-Type: 4,ENCRYPTED`, `BEGIN ENCRYPTED PRIVATE KEY`, or a non-`none` cipher name in an
 OpenSSH v1 block) so the dialog can show the passphrase field *before* the user commits to
 an import that would fail.
+
+**Export is the inverse of storage, not of import.** `KeysViewModel.prepareExport` unlocks
+(`Secrets.unlockForRead`, which prompts only when the blob was sealed under the gated key)
+and decrypts the row, then holds the plaintext in `PendingExport` just long enough for the
+`CreateDocument` save dialog to return a URI; a cancelled save drops it. What lands on disk
+is the stored text verbatim, so a passphrase-protected key stays protected and the app never
+re-encodes key material it did not produce.
 
 `KeyPairFactory.generate` runs on `Dispatchers.Default` from the ViewModel — RSA generation
 is seconds of CPU and must not touch the main thread.

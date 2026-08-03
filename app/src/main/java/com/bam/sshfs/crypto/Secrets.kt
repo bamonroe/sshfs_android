@@ -35,4 +35,20 @@ object Secrets {
             throw AuthenticationRequiredException()
         }
     }
+
+    /**
+     * Prompt for authentication when any of [blobs] was sealed under the gated key.
+     *
+     * Reading follows the blob, not the current setting: a secret sealed while the
+     * gate was on still needs an unlock after the setting is turned off.
+     *
+     * @throws AuthenticationRequiredException if the user declines or no prompt can
+     *   be shown, so the caller reports a refusal rather than a decrypt failure.
+     */
+    suspend fun unlockForRead(title: String, subtitle: String, vararg blobs: String?) {
+        if (!KeystoreSecretStore.needsAuthentication(*blobs)) return
+        if (!SecretAuthGate.authenticate(title, subtitle)) {
+            throw AuthenticationRequiredException()
+        }
+    }
 }

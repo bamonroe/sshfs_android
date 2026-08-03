@@ -65,7 +65,8 @@ What that means day to day:
 
 - **Generate** — name the pair, optionally give it a comment (appended to the public key
   exactly as `ssh-keygen` does), and pick **Ed25519** (recommended) or **RSA 3072-bit**.
-  The pair is created on the device; the private half never leaves it.
+  The pair is created on the device; the private half only leaves it if you explicitly
+  export it (below).
 - **Import** — paste an existing private key, or pick the file with the system file
   picker. Passphrase-protected keys are detected as you paste, and a passphrase field
   appears; PEM (PKCS#1/PKCS#8), PuTTY, and OpenSSH v1 blocks are all accepted. The public
@@ -76,6 +77,12 @@ The **More** menu on a key offers:
 
 - **Show public key** — the full `ssh-ed25519 AAAA… comment` line, with **Copy** to put it
   on the clipboard for pasting into a server's `~/.ssh/authorized_keys`.
+- **Export private key…** — write the private half out to a file, to back it up or reuse it
+  on another machine. You get a warning first, then a fingerprint/PIN prompt if the key is
+  behind the authentication gate, and then the system save dialog with a suggested name
+  (`id_ed25519_<key name>`). The file is byte-for-byte the key as stored: a
+  passphrase-protected key stays protected, an unprotected one is written as plaintext key
+  material — treat that file as a password and delete it once it is where you want it.
 - **Rename** — the only editable field on a stored pair.
 - **Delete** — refused with a count when identities still use the key, and offered again as
   **Unlink and delete**, which clears those links first.

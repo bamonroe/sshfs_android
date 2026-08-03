@@ -21,6 +21,11 @@
     <string name="key_delete_body">“%1$s” will be removed from this device. Servers keep the public key in authorized_keys until you remove it there.</string>
     <string name="key_in_use_title">Key still in use</string>
     <string name="key_in_use_body">“%1$s” is used by %2$d identities. Deleting it unlinks them; those identities will need a password or another key to connect.</string>
+    <string name="key_export_title">Export private key?</string>
+    <string name="key_export_body">“%1$s” will be written out as a private key file. Anyone who gets that file can log in as you — save it somewhere you trust and delete it once you have moved it.</string>
+    <string name="key_export_body_passphrase">The file stays passphrase-protected, so it is only usable with the passphrase you set.</string>
+    <string name="key_export_body_plaintext">This key has no passphrase, so the file is plaintext key material.</string>
+    <string name="key_export_done">Exported “%1$s”.</string>
     <string name="key_field_name">Name</string>
     <string name="key_field_comment">Comment</string>
     <string name="key_field_comment_hint">Appended to the public key, as ssh-keygen does</string>
@@ -99,6 +104,8 @@
     <string name="action_import">Import</string>
     <string name="action_pick_key_file">Pick a key file…</string>
     <string name="action_show_public_key">Show public key</string>
+    <string name="action_export_private_key">Export private key…</string>
+    <string name="action_export">Export</string>
     <string name="action_rename">Rename</string>
     <string name="action_add_identity">Add identity</string>
     <string name="action_add_host">Add host</string>
@@ -127,6 +134,7 @@
     <string name="auth_prompt_title">Unlock stored secrets</string>
     <string name="auth_prompt_subtitle">Needed to connect as “%1$s”</string>
     <string name="auth_prompt_save_key">Needed to store this key</string>
+    <string name="auth_prompt_export_key">Needed to export this private key</string>
     <string name="auth_prompt_save_password">Needed to store this password</string>
     <string name="auth_prompt_enable">Confirm to start requiring authentication</string>
     <string name="auth_prompt_disable">Confirm to stop requiring authentication</string>

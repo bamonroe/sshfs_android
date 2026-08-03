@@ -1,5 +1,8 @@
 package com.bam.sshfs.ui.keys
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bam.sshfs.R
+import com.bam.sshfs.crypto.KeyExport
 import com.bam.sshfs.data.model.SshKey
 
 /** Which modal, if any, is on top of the list. */
@@ -41,6 +45,7 @@ private sealed interface KeysDialog {
     data object Generate : KeysDialog
     data object Import : KeysDialog
     data class ShowPublic(val key: SshKey) : KeysDialog
+    data class ExportPrivate(val key: SshKey) : KeysDialog
     data class Rename(val key: SshKey) : KeysDialog
     data class Delete(val key: SshKey) : KeysDialog
 }
@@ -53,11 +58,25 @@ fun KeysScreen(modifier: Modifier = Modifier, vm: KeysViewModel = viewModel()) {
     val busy by vm.busy.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
     val unlink by vm.unlinkPrompt.collectAsStateWithLifecycle()
+    val notice by vm.notice.collectAsStateWithLifecycle()
+    val pendingExport by vm.pendingExport.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<KeysDialog?>(null) }
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(error) {
         error?.let { snackbar.showSnackbar(it); vm.dismissError() }
+    }
+    LaunchedEffect(notice) {
+        notice?.let { snackbar.showSnackbar(it); vm.dismissNotice() }
+    }
+
+    // The save dialog opens only once the key is unlocked, and a cancelled save
+    // drops the decrypted material again rather than leaving it in memory.
+    val saver = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/x-pem-file"),
+    ) { uri: Uri? -> if (uri == null) vm.cancelExport() else vm.writeExport(uri) }
+    LaunchedEffect(pendingExport) {
+        pendingExport?.let { saver.launch(KeyExport.suggestedFileName(it.key)) }
     }
 
     Scaffold(
@@ -71,6 +90,7 @@ fun KeysScreen(modifier: Modifier = Modifier, vm: KeysViewModel = viewModel()) {
             KeyList(
                 keys = keys,
                 onShowPublicKey = { dialog = KeysDialog.ShowPublic(it) },
+                onExportPrivateKey = { dialog = KeysDialog.ExportPrivate(it) },
                 onRename = { dialog = KeysDialog.Rename(it) },
                 onDelete = { dialog = KeysDialog.Delete(it) },
             )
@@ -100,6 +120,9 @@ private fun KeysDialogHost(
             vm.import(name, key, passphrase, comment); onDismiss()
         }
         is KeysDialog.ShowPublic -> PublicKeyDialog(dialog.key, onDismiss)
+        is KeysDialog.ExportPrivate -> ExportKeyDialog(dialog.key, onDismiss) {
+            vm.prepareExport(dialog.key); onDismiss()
+        }
         is KeysDialog.Rename -> RenameKeyDialog(dialog.key, onDismiss) { name ->
             vm.rename(dialog.key, name); onDismiss()
         }
@@ -119,6 +142,7 @@ private fun KeysDialogHost(
 private fun KeyList(
     keys: List<SshKey>,
     onShowPublicKey: (SshKey) -> Unit,
+    onExportPrivateKey: (SshKey) -> Unit,
     onRename: (SshKey) -> Unit,
     onDelete: (SshKey) -> Unit,
 ) {
@@ -135,6 +159,7 @@ private fun KeyList(
             KeyListItem(
                 key = key,
                 onShowPublicKey = { onShowPublicKey(key) },
+                onExportPrivateKey = { onExportPrivateKey(key) },
                 onRename = { onRename(key) },
                 onDelete = { onDelete(key) },
             )

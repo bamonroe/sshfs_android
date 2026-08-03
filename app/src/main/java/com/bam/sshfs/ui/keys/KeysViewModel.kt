@@ -1,14 +1,17 @@
 package com.bam.sshfs.ui.keys
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.bam.sshfs.R
+import com.bam.sshfs.crypto.KeyExport
 import com.bam.sshfs.crypto.KeyImporter
 import com.bam.sshfs.crypto.KeyMaterial
 import com.bam.sshfs.crypto.KeyMaterialException
 import com.bam.sshfs.crypto.KeyPairFactory
 import com.bam.sshfs.crypto.SecretStore
+import com.bam.sshfs.crypto.SecretStoreException
 import com.bam.sshfs.crypto.Secrets
 import com.bam.sshfs.data.db.SshfsDatabase
 import com.bam.sshfs.data.model.KeyOrigin
@@ -27,6 +30,12 @@ import kotlinx.coroutines.withContext
 
 /** A delete that needs the user to confirm unlinking the identities using the key. */
 data class UnlinkPrompt(val key: SshKey, val references: Int)
+
+/**
+ * A key whose private material has been unlocked and is waiting for the user to
+ * choose where to save it. Held only until the save dialog returns.
+ */
+data class PendingExport(val key: SshKey, val privateKey: String)
 
 /** Drives the Keys screen: the stored list plus generate / import / delete. */
 class KeysViewModel(
@@ -53,7 +62,15 @@ class KeysViewModel(
     private val _unlinkPrompt = MutableStateFlow<UnlinkPrompt?>(null)
     val unlinkPrompt: StateFlow<UnlinkPrompt?> = _unlinkPrompt.asStateFlow()
 
+    private val _notice = MutableStateFlow<String?>(null)
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    private val _pendingExport = MutableStateFlow<PendingExport?>(null)
+    val pendingExport: StateFlow<PendingExport?> = _pendingExport.asStateFlow()
+
     fun dismissError() { _error.value = null }
+
+    fun dismissNotice() { _notice.value = null }
 
     fun dismissUnlinkPrompt() { _unlinkPrompt.value = null }
 
@@ -84,6 +101,41 @@ class KeysViewModel(
         } catch (e: ReferencedException) {
             _unlinkPrompt.value = UnlinkPrompt(key, e.referenceCount)
         }
+    }
+
+    /**
+     * Unlock and decrypt one key's private material, ready for a save dialog.
+     *
+     * The prompt happens here, before the file picker opens, so the user confirms
+     * with their fingerprint or PIN and only then chooses a destination.
+     */
+    fun prepareExport(key: SshKey) = work {
+        val app = getApplication<Application>()
+        Secrets.unlockForRead(
+            app.getString(R.string.auth_prompt_title),
+            app.getString(R.string.auth_prompt_export_key),
+            key.privateKeyCiphertext,
+        )
+        val privateKey = withContext(Dispatchers.IO) { secrets.decrypt(key.privateKeyCiphertext) }
+        _pendingExport.value = PendingExport(key, privateKey)
+    }
+
+    /** Drop unlocked material the user decided not to save after all. */
+    fun cancelExport() { _pendingExport.value = null }
+
+    /** Write the pending export to the document the user picked, then forget it. */
+    fun writeExport(uri: Uri) = work {
+        val pending = _pendingExport.value ?: return@work
+        val app = getApplication<Application>()
+        // "wt" truncates: the picker will happily hand back an existing document, and a
+        // shorter key written over a longer one would otherwise leave a tail behind.
+        withContext(Dispatchers.IO) {
+            val bytes = KeyExport.fileContents(pending.privateKey).toByteArray(Charsets.UTF_8)
+            app.contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
+                ?: throw SecretStoreException("Could not open the chosen file for writing")
+        }
+        _pendingExport.value = null
+        _notice.value = app.getString(R.string.key_export_done, pending.key.name)
     }
 
     private suspend fun store(
