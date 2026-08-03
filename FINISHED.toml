@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "keys-screen-list-generate-and-import-key-pairs"
+title = "Keys screen: list, generate, and import key pairs"
+description = "Material 3 screen listing stored keys with add/edit/delete. Generate ed25519 or RSA pairs on-device, or import an existing private key via the system file picker or paste; show and copy the public key for pasting into authorized_keys. Handle passphrase-protected keys."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["ui"]
+
+[[task]]
 id = "define-the-host-identity-key-data-model"
 title = "Define the Host / Identity / Key data model"
 description = "Three separate first-class entities persisted with Room: Key (name, type, private+public material, passphrase state, imported-or-generated), Identity (name, username, optional password, optional link to a Key), Host (name, address, port, optional default Identity, freeform extra connect args for proxy/jump/ssh options). Identity references a Key; Host references a default Identity; deleting a referenced row is blocked or nulled explicitly. Record the schema in docs/architecture.md."

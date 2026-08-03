@@ -10,9 +10,35 @@ storage, via the Storage Access Framework. See `CLAUDE.md` for what the project 
 
 ## Status
 
-Early scaffold. The app builds, installs, and launches a Compose/Material 3 placeholder
-screen. The Hosts / Identities / Keys UI, the SSH transport, and the `DocumentsProvider`
-are still to come.
+Early. The app builds, installs, and opens on the **Keys** screen, which is fully working:
+generate a pair on-device, import one you already use, and copy the public key out. The
+Identities and Hosts screens, the app shell that navigates between all three, the SSH
+transport, and the `DocumentsProvider` are still to come.
+
+> **Keys are not yet encrypted at rest.** Private keys currently sit in the app's private
+> database base64-encoded, not Keystore-encrypted — that lands with the credential-storage
+> task in `TODO.toml`. Don't import a key you can't afford to lose control of yet.
+
+## Managing keys
+
+The Keys screen is the first thing the app opens. **Add key** offers two routes:
+
+- **Generate** — name the pair, optionally give it a comment (appended to the public key
+  exactly as `ssh-keygen` does), and pick **Ed25519** (recommended) or **RSA 3072-bit**.
+  The pair is created on the device; the private half never leaves it.
+- **Import** — paste an existing private key, or pick the file with the system file
+  picker. Passphrase-protected keys are detected as you paste, and a passphrase field
+  appears; PEM (PKCS#1/PKCS#8), PuTTY, and OpenSSH v1 blocks are all accepted. The public
+  key is derived from the private material, so you don't need the matching `.pub` file.
+
+Each stored key shows its algorithm, where it came from, and its `SHA256:` fingerprint.
+The **More** menu on a key offers:
+
+- **Show public key** — the full `ssh-ed25519 AAAA… comment` line, with **Copy** to put it
+  on the clipboard for pasting into a server's `~/.ssh/authorized_keys`.
+- **Rename** — the only editable field on a stored pair.
+- **Delete** — refused with a count when identities still use the key, and offered again as
+  **Unlink and delete**, which clears those links first.
 
 ## Requirements
 

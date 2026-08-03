@@ -46,6 +46,21 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
+
+    // The Bouncy Castle and SSHJ jars are signed and multi-release; their signature
+    // and versioned entries have no meaning inside an APK and collide if kept.
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/*.SF",
+                "META-INF/*.DSA",
+                "META-INF/*.RSA",
+                "META-INF/versions/**",
+                "META-INF/INDEX.LIST",
+                "META-INF/DEPENDENCIES",
+            )
+        }
+    }
 }
 
 // Room writes its schema JSON here so migrations can diff against it.
@@ -59,7 +74,17 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.1")
+
+    // SSHJ parses imported private keys — including bcrypt-KDF OpenSSH v1 blocks —
+    // and will carry the SFTP transport later. Bouncy Castle backs both it and the
+    // on-device key generation; Android's cut-down "BC" provider is not enough.
+    implementation("com.hierynomus:sshj:0.38.0")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+    implementation("org.slf4j:slf4j-api:2.0.13")
     implementation(platform("androidx.compose:compose-bom:2024.08.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")

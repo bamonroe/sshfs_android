@@ -12,7 +12,9 @@ how a user builds and runs the app.
 | `…/data/model/` | Room entities: `SshKey`, `Identity`, `Host` |
 | `…/data/db/` | `SshfsDatabase`, the DAOs, and the enum `Converters` |
 | `…/data/repo/` | Repositories: CRUD plus the referential-integrity rules |
+| `…/crypto/` | Key generation, import/parsing, OpenSSH text formats, secret storage |
 | `…/ui/` | Compose screens and the Material 3 theme |
+| `…/ui/keys/` | The Keys screen: list, generate, import, show/copy public key |
 | `app/schemas/` | Room's exported schema JSON (generated; also an androidTest asset) |
 | `docs/` | The spoke docs — this file and `tools.md` |
 
@@ -87,6 +89,44 @@ Room gives compile-time-checked SQL, `Flow` observation for Compose, and a versi
 schema exported to `app/schemas/` for migrations. Secrets never sit in plaintext: private
 keys, passphrases, and passwords are stored as Keystore-encrypted blobs, so the database
 file alone is not enough to authenticate anywhere.
+
+## Key material — generation, import, and the text forms
+
+`…/crypto/` owns everything that turns bytes into a key and back. It is deliberately free
+of Android APIs (no `android.util.Base64`, no `Context`) so the whole layer is covered by
+plain JVM unit tests in `app/src/test/`.
+
+| Type | Job |
+|------|-----|
+| `KeyPairFactory` | Generates Ed25519 and RSA-3072 pairs on-device with Bouncy Castle |
+| `KeyImporter` | Parses a pasted or picked private key, and reports whether it is passphrase-protected |
+| `OpenSshFormat` | The `ssh-ed25519 AAAA… comment` line, its `SHA256:` fingerprint, and PEM wrapping |
+| `SecretStore` | Plaintext ⇄ the ciphertext blob a row stores |
+| `SshSecurity` | Installs the full Bouncy Castle provider over Android's cut-down one |
+
+**Generation writes what `ssh-keygen` writes.** Ed25519 comes out as an OpenSSH v1 block,
+RSA as a PKCS#1 PEM, and the public half as the single line a server's `authorized_keys`
+wants. Generated pairs carry **no passphrase** — at rest they are protected by the
+`SecretStore`, which is what actually guards the database file.
+
+**Import goes through SSHJ**, the same library the transport will authenticate with, so a
+key that imports successfully is one that will actually connect. The public half is
+*derived from the private material* rather than trusted from a separate `.pub` file. That
+also covers the formats a hand-rolled parser would miss: PKCS#1, PKCS#8, PuTTY, and
+bcrypt-KDF-encrypted OpenSSH v1 blocks. `KeyImporter.isEncrypted` inspects the text
+(`Proc-Type: 4,ENCRYPTED`, `BEGIN ENCRYPTED PRIVATE KEY`, or a non-`none` cipher name in an
+OpenSSH v1 block) so the dialog can show the passphrase field *before* the user commits to
+an import that would fail.
+
+`KeyPairFactory.generate` runs on `Dispatchers.Default` from the ViewModel — RSA generation
+is seconds of CPU and must not touch the main thread.
+
+### `SecretStore` is a placeholder until the Keystore task
+
+`PassthroughSecretStore` is **base64, not encryption**. It exists so the repository, the
+ViewModel, and the schema already speak in ciphertext blobs; the credential-storage task
+swaps in the Keystore-backed implementation without touching a call site. Until then, the
+private key column is *not* actually protected — see `TODO.toml`.
 
 ## Data flow — SAF and the transport
 

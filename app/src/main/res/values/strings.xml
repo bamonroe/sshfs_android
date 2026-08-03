@@ -1,6 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SSHFS</string>
-    <string name="scaffold_headline">SSHFS for Android</string>
-    <string name="scaffold_body">Remote SSH/SFTP servers as system storage. Hosts, Identities and Keys land here next.</string>
+
+    <!-- Keys screen -->
+    <string name="keys_title">Keys</string>
+    <string name="keys_empty">No keys yet.\n\nGenerate a pair on this device, or import one you already use.</string>
+    <string name="key_generate_title">Generate key pair</string>
+    <string name="key_import_title">Import private key</string>
+    <string name="key_rename_title">Rename key</string>
+    <string name="key_delete_title">Delete key?</string>
+    <string name="key_delete_body">“%1$s” will be removed from this device. Servers keep the public key in authorized_keys until you remove it there.</string>
+    <string name="key_in_use_title">Key still in use</string>
+    <string name="key_in_use_body">“%1$s” is used by %2$d identities. Deleting it unlinks them; those identities will need a password or another key to connect.</string>
+    <string name="key_field_name">Name</string>
+    <string name="key_field_comment">Comment</string>
+    <string name="key_field_comment_hint">Appended to the public key, as ssh-keygen does</string>
+    <string name="key_field_algorithm">Algorithm</string>
+    <string name="key_field_private">Private key</string>
+    <string name="key_field_private_hint">Paste the PEM or OpenSSH block, or pick the file</string>
+    <string name="key_field_passphrase">Passphrase</string>
+    <string name="key_field_passphrase_hint">This key is passphrase-protected</string>
+    <string name="key_algorithm_ed25519">Ed25519 (recommended)</string>
+    <string name="key_algorithm_rsa">RSA %1$d-bit</string>
+    <string name="key_origin_generated">generated here</string>
+    <string name="key_origin_imported">imported</string>
+    <string name="key_passphrase_badge">passphrase</string>
+    <string name="key_fingerprint_unavailable">fingerprint unavailable</string>
+
+    <!-- Actions -->
+    <string name="action_add_key">Add key</string>
+    <string name="action_generate">Generate</string>
+    <string name="action_import">Import</string>
+    <string name="action_pick_key_file">Pick a key file…</string>
+    <string name="action_show_public_key">Show public key</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_unlink_delete">Unlink and delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_close">Close</string>
+    <string name="action_more">More</string>
 </resources>
