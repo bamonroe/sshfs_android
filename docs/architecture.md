@@ -365,9 +365,49 @@ a shared pool means one slow server can't starve the others. The worker is shut 
 Failures are mapped to `FileNotFoundException`, which is what SAF's contract allows: the
 picker shows an unavailable item instead of crashing the app that called in.
 
-### Capability flags are promises, so they stay off
+### Files stream; they are not downloaded
 
-Document rows currently report **no** flags. SAF treats a flag as a commitment and shows the
-user a failed operation if it isn't kept, so read, write, delete, rename and create are all
-advertised only once `openDocument` and the write paths land (see `TODO.toml`). `RemoteEntry`
-already carries `readable`/`writable`, ready for that pass.
+`openDocument` returns a descriptor from `StorageManager.openProxyFileDescriptor`, backed by
+`RemoteProxyCallback`. Every `read`/`write` the calling app makes becomes an offset-addressed
+SFTP request for exactly that range, so opening a multi-gigabyte file costs one `open` round
+trip and nothing more until something reads. This is the closest an unprivileged Android app
+gets to what SSHFS does with FUSE, and it is the reason the whole `RemoteHandle` seam exists.
+
+`DocumentDescriptors` owns the choice of strategy. The proxy path needs the platform's
+FUSE-backed implementation, which exists since API 26 but is *absent at runtime* on some
+devices and emulator images, and there is no way to ask in advance — so the fallback is chosen
+by catching `UnsupportedOperationException`, not by checking an API level. The fallback caches
+the file under `cacheDir/saf-cache`, hands back a plain descriptor, and uploads it again from
+the close listener; it is correct everywhere and much worse for large files, which is why it is
+second.
+
+Each open file gets its **own** handler thread, because a callback blocks on the network and
+one app streaming a large file must not stall another's reads. Those threads still hand every
+call to the host's `RemoteWorkers` executor, so the SFTP channel stays single-threaded.
+Failures leave the callback as `ErrnoException` (`EIO`): the kernel turns that into the calling
+app's `IOException`, whereas an unchecked exception there would take down the process.
+
+`DocumentMode` parses SAF's mode string into open flags as a pure value, so a plain JVM test
+covers the case that can destroy data — a bare `w` **truncates**, matching
+`ParcelFileDescriptor` and every other provider, while `wa` keeps the contents.
+
+### Creating, deleting and renaming
+
+`createDocument`, `deleteDocument` and `renameDocument` all run on the host worker and all
+notify the parent's child-documents URI afterwards, so an open picker re-lists itself.
+
+Names are the subtle part, and `DocumentNames` owns them. SAF's contract is that
+`createDocument` returns a document that **exists**, so a collision is resolved by the provider
+rather than reported: the parent is listed once and the name counts up as ` (1)`, ` (2)`, …
+the way Android's own providers do, so two apps saving `download.pdf` can't overwrite each
+other. A leading dot is never treated as an extension — `.bashrc` is a whole name on a Unix
+server. A rename that omits the extension keeps the original one.
+
+### Capability flags are promises
+
+Flags are derived per entry from the `readable`/`writable` bits `RemoteEntry` carries, never
+advertised unconditionally: SAF treats a flag as a commitment and shows the user a failed
+operation if it isn't kept. Delete and rename are properties of the *parent* directory in
+POSIX; the parent isn't in hand while building a row, so the entry's own writability stands in
+as the closest available proxy. Roots add `SUPPORTS_CREATE`, which is what lets another app
+pick a server as a save destination.

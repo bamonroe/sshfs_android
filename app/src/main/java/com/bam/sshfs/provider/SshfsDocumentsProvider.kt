@@ -114,13 +114,104 @@ class SshfsDocumentsProvider : DocumentsProvider() {
     }
 
     /**
-     * Not implemented yet — streaming file I/O is its own piece of work, and no
-     * document row advertises a read or write flag until it lands.
+     * Hand back a descriptor that streams the remote file on demand.
+     *
+     * The open itself is a round trip and so runs on the worker; everything after
+     * that is [DocumentDescriptors]' problem. [signal] is deliberately unused for the
+     * open — SFTP has no cancellable open, and the 30-second worker timeout already
+     * bounds it.
      */
     override fun openDocument(
         documentId: String,
         mode: String,
         signal: CancellationSignal?,
-    ): ParcelFileDescriptor =
-        throw FileNotFoundException("Opening remote files is not implemented yet.")
+    ): ParcelFileDescriptor {
+        val id = parse(documentId)
+        val parsed = try {
+            DocumentMode.parse(mode)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException("Cannot open $documentId as '$mode'.", e)
+        }
+        val session = sessionOf(id)
+        val handle = remote(id) {
+            session.open(id.path, write = parsed.write, create = false, truncate = parsed.truncate)
+        }
+        return DocumentDescriptors.open(
+            appContext(),
+            id.hostId,
+            RemotePaths.name(id.path),
+            parsed,
+            mode,
+            handle,
+        )
+    }
+
+    /**
+     * Create an empty file or a directory under [parentDocumentId].
+     *
+     * The name is uniquified against a fresh listing rather than trusted: SAF's
+     * contract is that this returns a document that *exists*, and two apps saving
+     * `download.pdf` into the same directory must not have one silently overwrite the
+     * other.
+     */
+    override fun createDocument(
+        parentDocumentId: String,
+        mimeType: String,
+        displayName: String,
+    ): String {
+        val parent = parse(parentDocumentId)
+        val session = sessionOf(parent)
+        val isDirectory = mimeType == DocumentsContract.Document.MIME_TYPE_DIR
+        val child = remote(parent) {
+            val taken = session.list(parent.path).mapTo(mutableSetOf()) { it.name }
+            val name = DocumentNames.unique(displayName, taken)
+            val path = RemotePaths.join(parent.path, name)
+            if (isDirectory) {
+                session.mkdir(path)
+            } else {
+                session.open(path, write = true, create = true, truncate = true).close()
+            }
+            DocumentId(parent.hostId, path)
+        }
+        notifyChildrenChanged(parent)
+        return child.toString()
+    }
+
+    override fun deleteDocument(documentId: String) {
+        val id = parse(documentId)
+        val session = sessionOf(id)
+        val entry = statOf(id)
+        remote(id) { session.delete(id.path, entry.isDirectory) }
+        id.parent()?.let { notifyChildrenChanged(it) }
+    }
+
+    /** SAF's "remove from this parent"; with no shared documents it is just a delete. */
+    override fun removeDocument(documentId: String, parentDocumentId: String) =
+        deleteDocument(documentId)
+
+    override fun renameDocument(documentId: String, displayName: String): String {
+        val id = parse(documentId)
+        val parentPath = RemotePaths.parent(id.path)
+            ?: throw FileNotFoundException("Cannot rename the root of a host.")
+        val parent = DocumentId(id.hostId, parentPath)
+        val session = sessionOf(id)
+        val renamed = remote(id) {
+            val taken = session.list(parentPath).mapTo(mutableSetOf()) { it.name }
+            val wanted = DocumentNames.renamed(RemotePaths.name(id.path), displayName)
+            val name = DocumentNames.unique(wanted, taken)
+            val path = RemotePaths.join(parentPath, name)
+            session.rename(id.path, path)
+            DocumentId(id.hostId, path)
+        }
+        notifyChildrenChanged(parent)
+        return renamed.toString()
+    }
+
+    /** Nudge any open picker showing [parent] to re-list it. */
+    private fun notifyChildrenChanged(parent: DocumentId) {
+        appContext().contentResolver.notifyChange(
+            DocumentsContract.buildChildDocumentsUri(SafRoots.AUTHORITY, parent.toString()),
+            null,
+        )
+    }
 }

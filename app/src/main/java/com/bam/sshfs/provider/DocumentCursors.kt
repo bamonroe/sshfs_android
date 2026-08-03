@@ -45,8 +45,8 @@ object DocumentCursors {
      *
      * `IS_CHILD` keeps the server out of the picker's top-level "recent" shortcuts —
      * every listing costs an SFTP round trip, so Android should only walk it when the
-     * user actually opens it. Write flags are deliberately absent until the provider
-     * implements `openDocument`.
+     * user actually opens it. `SUPPORTS_CREATE` lets other apps pick a server as a
+     * *save* destination, which is the whole point of a writable root.
      */
     fun addRoot(cursor: MatrixCursor, host: Host, documentId: DocumentId) {
         cursor.newRow()
@@ -54,7 +54,7 @@ object DocumentCursors {
             .add(Root.COLUMN_DOCUMENT_ID, documentId.toString())
             .add(Root.COLUMN_TITLE, host.name)
             .add(Root.COLUMN_SUMMARY, "${host.address}:${host.port}")
-            .add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_IS_CHILD)
+            .add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_IS_CHILD or Root.FLAG_SUPPORTS_CREATE)
             .add(Root.COLUMN_ICON, android.R.drawable.ic_menu_share)
     }
 
@@ -67,8 +67,32 @@ object DocumentCursors {
             .add(Document.COLUMN_MIME_TYPE, mimeType)
             .add(Document.COLUMN_SIZE, entry.size)
             .add(Document.COLUMN_LAST_MODIFIED, entry.modifiedMillis)
-            // No capability flags yet: SAF treats a flag as a promise, and read,
-            // write, delete and rename all arrive with the file-I/O work.
-            .add(Document.COLUMN_FLAGS, 0)
+            .add(Document.COLUMN_FLAGS, flagsFor(entry))
+    }
+
+    /**
+     * The capability flags for one entry.
+     *
+     * SAF treats every flag as a promise it will show the user a failure for, so each
+     * one is derived from the permission bits `RemoteEntry` carries rather than
+     * advertised unconditionally. Those bits are only the server's *hint* — it still
+     * enforces the truth — but claiming write on a file whose owner bit is clear is
+     * the case that reliably fails, and this avoids it.
+     *
+     * Delete and rename are properties of the *parent* directory in POSIX, not of the
+     * entry; the parent isn't in hand here, so the entry's own writability is used as
+     * the closest available proxy.
+     */
+    private fun flagsFor(entry: RemoteEntry): Int {
+        var flags = 0
+        if (entry.isDirectory) {
+            if (entry.writable) flags = flags or Document.FLAG_DIR_SUPPORTS_CREATE
+        } else if (entry.writable) {
+            flags = flags or Document.FLAG_SUPPORTS_WRITE
+        }
+        if (entry.writable) {
+            flags = flags or Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME
+        }
+        return flags
     }
 }

@@ -13,8 +13,9 @@ storage, via the Storage Access Framework. See `CLAUDE.md` for what the project 
 Early. The app builds, installs, and opens on the **Connections** tab, with bottom navigation
 over Connections, Hosts, Identities and Keys. The Keys, Identities and Hosts screens are each
 fully working, and connecting a host now opens a real authenticated SFTP session held by a
-foreground service. The `DocumentsProvider` is still to come, so the connections exist but
-nothing shows up in the system file picker yet.
+foreground service. Each connected host appears as a root in the system file picker, and files
+open, save, create, rename and delete from there — streaming over SFTP rather than downloading.
+Still to come: a metadata cache for listings, and broader test coverage (see `TODO.toml`).
 
 ## How your credentials are stored
 
@@ -162,10 +163,26 @@ Only SAF-aware apps can see these files. There is no mount point and no `/mnt/..
 app that insists on a real filesystem path can't reach them; this is a limit of Android, not of
 the app.
 
-> **Opening a file doesn't work yet.** You can browse directories and see every file's name,
-> size and date, but reading or writing the contents — plus creating, renaming and deleting —
-> is the next piece of work; see `TODO.toml`. Files are deliberately shown without those
-> capabilities rather than failing halfway through.
+### Opening, saving, renaming and deleting
+
+Files open **in place**. Pick a remote file in any app and it reads straight off the server as
+it goes, rather than downloading first — a large video starts playing without waiting for the
+whole thing, and an app that only reads the first few kilobytes only ever fetches that much.
+Saving works the same way in reverse, so a server is a valid destination in another app's
+"Save" dialog.
+
+On a device whose Android build lacks the streaming descriptor, the app quietly falls back to
+copying the file to a temp cache, handing that over, and uploading it again when the app
+closes it. The result is identical; a large file just takes longer to open.
+
+You can also **create** a folder or a file, **rename**, and **delete** from the picker. If the
+name you choose is already taken, the app adds ` (1)`, ` (2)` and so on rather than overwriting
+what's there — so two apps saving `download.pdf` into the same folder both keep their file. A
+rename where you leave the extension off keeps the original one.
+
+What you can do to a file is whatever the **server** allows: the picker only offers write,
+rename and delete on entries your account owns with write permission, and the server has the
+final say regardless.
 
 ## Requirements
 

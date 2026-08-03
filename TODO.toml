@@ -21,17 +21,6 @@ finish_work = "When a task is fully finished (built, tested, documented), run `s
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
 
 [[task]]
-id = "documentsprovider-streaming-file-read-write"
-title = "DocumentsProvider: streaming file read/write"
-description = "openDocument backed by StorageManager.openProxyFileDescriptor and a ProxyFileDescriptorCallback running on a handler thread, so reads and writes stream over SFTP on demand instead of downloading whole files. Falls back to a cached temp file where the proxy FD is not usable. Also implements createDocument, deleteDocument, and renameDocument."
-status = "active"
-category = "feature"
-urgency = "high"
-order = 110
-created = 2026-08-03
-tags = ["provider"]
-
-[[task]]
 id = "metadata-cache-for-listings-and-stats"
 title = "Metadata cache for listings and stats"
 description = "Short-TTL in-memory cache of directory listings and stat results, invalidated on writes and on reconnect, because file pickers query aggressively and SFTP round-trips are slow."
