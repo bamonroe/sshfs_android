@@ -21,6 +21,7 @@ how a user builds and runs the app.
 | `…/ui/shell/` | The single-activity shell: the `Destination` enum and its bottom nav bar |
 | `…/net/` | Transport-facing helpers, plus the connection manager and its foreground service |
 | `…/net/ssh/` | The SSH/SFTP transport: connect, host-key trust, remote file operations |
+| `…/provider/` | The `DocumentsProvider`: SAF roots, document ids, cursors, and the SFTP workers |
 | `app/schemas/` | Room's exported schema JSON (generated; also an androidTest asset) |
 | `docs/` | The spoke docs — this file and `tools.md` |
 
@@ -317,6 +318,56 @@ straight through: retrying it would repeat the same answer, and retrying a rejec
 would lock the account out. The session is connected **lazily** on first use and guarded by a
 lock, because the `DocumentsProvider` calls in from several handler threads at once.
 
-## Data flow — SAF and the transport
+## The SAF provider — `…/provider/`
 
-*To be filled in as the DocumentsProvider and connection service land (see `TODO.toml`).*
+`SshfsDocumentsProvider` is the whole seam between the remote servers and the rest of the
+device. It is registered in the manifest under the authority **`com.bam.sshfs.documents`**
+(the same string `SafRoots.AUTHORITY` holds) with the `DOCUMENTS_PROVIDER` intent filter and
+the `MANAGE_DOCUMENTS` signature permission, so only the system can bind it directly while any
+app's picker can still reach it through SAF.
+
+### The provider holds no state
+
+Every session lives in `ConnectionManager`; the provider only reads it. That matters because
+Android creates a provider instance on a *cold* binder call — a picker can query roots long
+after the last activity was destroyed — and a provider with its own session cache would answer
+from a copy the UI had already invalidated. `queryRoots` walks
+`ConnectionManager.connected()`, so the picker and the Connections screen can never disagree.
+
+### Document ids are `hostId:/absolute/path`
+
+`DocumentId` owns the encoding. SAF hands ids back opaquely and with no other context, so an
+id has to name its own host; the split is on the **first** colon, which leaves a colon inside
+a remote path intact. `isChildDocument` and the breadcrumb walk are answered by
+`DocumentId.contains` — pure string arithmetic, because SAF asks those far too often to spend
+a round trip on.
+
+### Roots are connected hosts only
+
+A disconnected host produces **no** root rather than an unavailable one: a root the picker
+cannot open is worse than no root at all. `ConnectionManager` calls `SafRoots.notifyChanged`
+whenever the set changes, and `queryRoots` sets that same URI as the cursor's notification URI,
+so an open picker updates itself as hosts come and go.
+
+The root's document id needs an absolute path, but `Host.remoteRoot` may be `.` or `~/…`.
+Canonicalizing costs a round trip, so it happens **once at connect time** and is cached on
+`ConnectionManager.ConnectedHost.rootPath`; `queryRoots` is called often and must stay free.
+
+### SFTP never runs on a binder thread
+
+`RemoteWorkers` keeps one **single-threaded** executor per host and every remote call is
+submitted to it and waited on with a 30-second timeout. Two reasons, both load-bearing: a
+stalled TCP read on a binder thread burns one of the process's few binder threads and can wedge
+unrelated SAF clients, and an SFTP channel is not safe for concurrent use. Per-host rather than
+a shared pool means one slow server can't starve the others. The worker is shut down in
+`ConnectionManager.disconnect`.
+
+Failures are mapped to `FileNotFoundException`, which is what SAF's contract allows: the
+picker shows an unavailable item instead of crashing the app that called in.
+
+### Capability flags are promises, so they stay off
+
+Document rows currently report **no** flags. SAF treats a flag as a commitment and shows the
+user a failed operation if it isn't kept, so read, write, delete, rename and create are all
+advertised only once `openDocument` and the write paths land (see `TODO.toml`). `RemoteEntry`
+already carries `readable`/`writable`, ready for that pass.

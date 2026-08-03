@@ -31,6 +31,22 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!--
+            The SAF seam: each connected host appears as a root in the file picker.
+            Exported so other apps' pickers can reach it; MANAGE_DOCUMENTS is a
+            signature permission, so only the system may bind it directly.
+        -->
+        <provider
+            android:name=".provider.SshfsDocumentsProvider"
+            android:authorities="com.bam.sshfs.documents"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+
     </application>
 
 </manifest>

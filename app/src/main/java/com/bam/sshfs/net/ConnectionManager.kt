@@ -9,6 +9,7 @@ import com.bam.sshfs.net.ssh.FileKnownHostsStore
 import com.bam.sshfs.net.ssh.ReconnectingSession
 import com.bam.sshfs.net.ssh.SftpSession
 import com.bam.sshfs.net.ssh.SshConnector
+import com.bam.sshfs.provider.RemoteWorkers
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,8 +28,14 @@ import kotlinx.coroutines.withContext
  */
 class ConnectionManager private constructor(context: Context) {
 
-    /** One connected host: its live session and the name the notification lists. */
-    private class Live(val name: String, val session: SftpSession)
+    /**
+     * One connected host as the provider sees it.
+     *
+     * [rootPath] is resolved once, at connect time, because `Host.remoteRoot` may be
+     * `.` or `~/…` and canonicalizing it costs a round trip — `queryRoots` is called
+     * often and must not pay that.
+     */
+    data class ConnectedHost(val host: Host, val rootPath: String, val session: SftpSession)
 
     private val app = context.applicationContext
     private val db = SshfsDatabase.get(app)
@@ -36,13 +43,19 @@ class ConnectionManager private constructor(context: Context) {
     private val connector = SshConnector(FileKnownHostsStore(File(app.filesDir, KNOWN_HOSTS)))
 
     private val lock = Any()
-    private val live = linkedMapOf<Long, Live>()
+    private val live = linkedMapOf<Long, ConnectedHost>()
 
     /** The session for [hostId], or null when that host isn't connected. */
     fun sessionOf(hostId: Long): SftpSession? = synchronized(lock) { live[hostId]?.session }
 
+    /** Everything the `DocumentsProvider` needs about [hostId], or null if it is down. */
+    fun connected(hostId: Long): ConnectedHost? = synchronized(lock) { live[hostId] }
+
+    /** Every connected host, in connection order — one SAF root each. */
+    fun connected(): List<ConnectedHost> = synchronized(lock) { live.values.toList() }
+
     /** Names of the connected hosts, connection order — the notification's text. */
-    fun connectedNames(): List<String> = synchronized(lock) { live.values.map { it.name } }
+    fun connectedNames(): List<String> = synchronized(lock) { live.values.map { it.host.name } }
 
     fun isEmpty(): Boolean = synchronized(lock) { live.isEmpty() }
 
@@ -63,6 +76,7 @@ class ConnectionManager private constructor(context: Context) {
     fun disconnect(hostId: Long) {
         val closing = synchronized(lock) { live.remove(hostId) }
         closing?.let { runCatching { it.session.close() } }
+        RemoteWorkers.release(hostId)
         ConnectionRegistry.clear(hostId)
         SafRoots.notifyChanged(app)
     }
@@ -72,6 +86,7 @@ class ConnectionManager private constructor(context: Context) {
         val closing = synchronized(lock) { live.toMap().also { live.clear() } }
         closing.forEach { (id, it) ->
             runCatching { it.session.close() }
+            RemoteWorkers.release(id)
             ConnectionRegistry.clear(id)
         }
         SafRoots.notifyChanged(app)
@@ -92,7 +107,8 @@ class ConnectionManager private constructor(context: Context) {
             // Touching the session forces the first handshake, so a bad credential
             // fails here rather than on the picker's first directory listing.
             val state = ConnectionState.Connected(session.serverVersion, session.fingerprint)
-            synchronized(lock) { live[host.id] = Live(host.name, session) }
+            val rootPath = session.canonicalize(host.remoteRoot)
+            synchronized(lock) { live[host.id] = ConnectedHost(host, rootPath, session) }
             state
         }
     } catch (e: Exception) {

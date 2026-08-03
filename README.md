@@ -146,8 +146,26 @@ notification permission the first time it launches.
 
 Disconnecting the last host stops the service and clears the notification.
 
-> **Nothing appears in the file picker yet.** The sessions are live and authenticated, but the
-> `DocumentsProvider` that turns them into browsable roots is still to come — see `TODO.toml`.
+## Browsing a server from other apps
+
+Every **connected** host shows up as a root in the system file picker — open **Files**, or any
+app's "Open" / "Save" dialog, pull out the drawer, and the host's name is in the list with its
+address underneath. Tapping it opens the host's **remote root** (the directory set on the host,
+`.` meaning the login directory) and you can walk the tree from there; folders, file sizes and
+modified dates all come live off the server.
+
+Roots appear and disappear with the connection: connect a host and it shows up in an already
+open picker, disconnect it and it goes away. A host that isn't connected has no root at all —
+there is nothing to browse until you connect it from the **Connections** tab.
+
+Only SAF-aware apps can see these files. There is no mount point and no `/mnt/...` path, so an
+app that insists on a real filesystem path can't reach them; this is a limit of Android, not of
+the app.
+
+> **Opening a file doesn't work yet.** You can browse directories and see every file's name,
+> size and date, but reading or writing the contents — plus creating, renaming and deleting —
+> is the next piece of work; see `TODO.toml`. Files are deliberately shown without those
+> capabilities rather than failing halfway through.
 
 ## Requirements
 

@@ -21,17 +21,6 @@ finish_work = "When a task is fully finished (built, tested, documented), run `s
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
 
 [[task]]
-id = "documentsprovider-roots-and-directory-listing"
-title = "DocumentsProvider: roots and directory listing"
-description = "DocumentsProvider subclass registered with the DOCUMENTS_PROVIDER intent filter and MANAGE_DOCUMENTS permission. queryRoots emits one root per connected host; queryDocument and queryChildDocuments map SFTP stat and listing results to SAF columns. All SFTP work happens off the binder thread."
-status = "active"
-category = "feature"
-urgency = "high"
-order = 100
-created = 2026-08-03
-tags = ["provider"]
-
-[[task]]
 id = "documentsprovider-streaming-file-read-write"
 title = "DocumentsProvider: streaming file read/write"
 description = "openDocument backed by StorageManager.openProxyFileDescriptor and a ProxyFileDescriptorCallback running on a handler thread, so reads and writes stream over SFTP on demand instead of downloading whole files. Falls back to a cached temp file where the proxy FD is not usable. Also implements createDocument, deleteDocument, and renameDocument."
