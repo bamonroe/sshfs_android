@@ -129,6 +129,10 @@ and the host stays clean.
   `podman compose` is a drop-in; note any command differences where they matter.
 - Don't rely on host-installed language toolchains or services — pin them in the container so
   the build is the same everywhere.
+- **Exception — the Android build.** Don't write a project-local `Dockerfile`/`compose.yaml`
+  for building the APK: that pipeline already exists and is documented in `docs/tools.md`.
+  Use it as-is for every build, emulator run, and install. Project-local Docker files are
+  still the right answer for anything *else* this repo needs to containerize.
 
 ### Web servers are written in Rust
 
