@@ -403,6 +403,24 @@ the way Android's own providers do, so two apps saving `download.pdf` can't over
 other. A leading dot is never treated as an extension — `.bashrc` is a whole name on a Unix
 server. A rename that omits the extension keeps the original one.
 
+### Listings and stats are cached for a few seconds
+
+`MetadataCache` sits between the provider and the workers, keyed by host **and** path. A
+picker showing one directory calls `queryChildDocuments` once and then `queryDocument` for
+every row, and re-runs the lot on redraw; every one of those is an SFTP round trip otherwise. A
+listing also seeds the stat of every child it saw, which is exactly the set of follow-up
+queries the picker is about to make, so a directory view costs **one** remote call.
+
+The TTL (`MetadataCache.DEFAULT_TTL_MILLIS`, 5s) is deliberately short rather than clever:
+entries expire on their own, so a change made by someone else on the server is hidden for at
+most a moment and the cache never has to stay right for long. Our *own* writes don't wait for
+it — `createDocument`/`deleteDocument`/`renameDocument` invalidate the parent directory through
+the same `notifyChildrenChanged` hook that nudges the picker, opening a file for write drops
+that path's stat (its size is about to change and nothing tells us when it stops), and
+`ConnectionManager` clears the whole host on disconnect, since a later reconnect may not even
+be the same machine. The uniquify listing inside `createDocument`/`renameDocument` deliberately
+bypasses the cache: a stale listing there would let two apps overwrite each other.
+
 ### Capability flags are promises
 
 Flags are derived per entry from the `readable`/`writable` bits `RemoteEntry` carries, never

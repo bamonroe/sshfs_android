@@ -9,6 +9,7 @@ import com.bam.sshfs.net.ssh.FileKnownHostsStore
 import com.bam.sshfs.net.ssh.ReconnectingSession
 import com.bam.sshfs.net.ssh.SftpSession
 import com.bam.sshfs.net.ssh.SshConnector
+import com.bam.sshfs.provider.MetadataCache
 import com.bam.sshfs.provider.RemoteWorkers
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +78,7 @@ class ConnectionManager private constructor(context: Context) {
         val closing = synchronized(lock) { live.remove(hostId) }
         closing?.let { runCatching { it.session.close() } }
         RemoteWorkers.release(hostId)
+        MetadataCache.shared.invalidateHost(hostId)
         ConnectionRegistry.clear(hostId)
         SafRoots.notifyChanged(app)
     }
@@ -87,6 +89,7 @@ class ConnectionManager private constructor(context: Context) {
         closing.forEach { (id, it) ->
             runCatching { it.session.close() }
             RemoteWorkers.release(id)
+            MetadataCache.shared.invalidateHost(id)
             ConnectionRegistry.clear(id)
         }
         SafRoots.notifyChanged(app)

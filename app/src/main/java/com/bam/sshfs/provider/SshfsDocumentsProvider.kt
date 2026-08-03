@@ -29,6 +29,9 @@ class SshfsDocumentsProvider : DocumentsProvider() {
     private val connections: ConnectionManager
         get() = ConnectionManager.get(appContext())
 
+    /** Shared with every provider instance the binder creates — see [MetadataCache]. */
+    private val cache = MetadataCache.shared
+
     override fun onCreate(): Boolean = true
 
     /**
@@ -63,7 +66,7 @@ class SshfsDocumentsProvider : DocumentsProvider() {
     ): Cursor {
         val id = parse(parentDocumentId)
         val session = sessionOf(id)
-        val entries = remote(id) { session.list(id.path) }
+        val entries = cache.listing(id.hostId, id.path) { remote(id) { session.list(id.path) } }
         val cursor = DocumentCursors.documentCursor(projection)
         for (entry in entries) DocumentCursors.addDocument(cursor, id.hostId, entry)
         cursor.setNotificationUri(
@@ -87,7 +90,7 @@ class SshfsDocumentsProvider : DocumentsProvider() {
     /** `stat` one path, mapped into the value type the cursor builder takes. */
     private fun statOf(id: DocumentId): RemoteEntry {
         val session = sessionOf(id)
-        return remote(id) { session.stat(id.path) }
+        return cache.stat(id.hostId, id.path) { remote(id) { session.stat(id.path) } }
     }
 
     private fun sessionOf(id: DocumentId) = connections.sessionOf(id.hostId)
@@ -136,6 +139,9 @@ class SshfsDocumentsProvider : DocumentsProvider() {
         val handle = remote(id) {
             session.open(id.path, write = parsed.write, create = false, truncate = parsed.truncate)
         }
+        // Size and mtime are about to change under us, and the caller may never tell us
+        // when it's done writing; forget them now rather than serve a stale length.
+        if (parsed.write) cache.invalidatePath(id.hostId, id.path)
         return DocumentDescriptors.open(
             appContext(),
             id.hostId,
@@ -207,8 +213,15 @@ class SshfsDocumentsProvider : DocumentsProvider() {
         return renamed.toString()
     }
 
-    /** Nudge any open picker showing [parent] to re-list it. */
+    /**
+     * Drop [parent] from the cache and nudge any open picker showing it to re-list.
+     *
+     * Every mutating call routes through here, so the cache is never left describing a
+     * directory we just changed ourselves — the TTL only ever covers other people's
+     * writes.
+     */
     private fun notifyChildrenChanged(parent: DocumentId) {
+        cache.invalidateDirectory(parent.hostId, parent.path)
         appContext().contentResolver.notifyChange(
             DocumentsContract.buildChildDocumentsUri(SafRoots.AUTHORITY, parent.toString()),
             null,

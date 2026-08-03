@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "metadata-cache-for-listings-and-stats"
+title = "Metadata cache for listings and stats"
+description = "Short-TTL in-memory cache of directory listings and stat results, invalidated on writes and on reconnect, because file pickers query aggressively and SFTP round-trips are slow."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["perf"]
+
+[[task]]
 id = "documentsprovider-streaming-file-read-write"
 title = "DocumentsProvider: streaming file read/write"
 description = "openDocument backed by StorageManager.openProxyFileDescriptor and a ProxyFileDescriptorCallback running on a handler thread, so reads and writes stream over SFTP on demand instead of downloading whole files. Falls back to a cached temp file where the proxy FD is not usable. Also implements createDocument, deleteDocument, and renameDocument."
