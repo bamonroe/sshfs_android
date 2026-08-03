@@ -21,12 +21,155 @@ finish_work = "When a task is fully finished (built, tested, documented), run `s
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
 
 [[task]]
-id = "replace-this-example-task"
-title = "Replace this example task"
-description = "Seed entry so the file parses and `scripts/todo.sh list` works from a fresh copy. Delete it (`scripts/todo.sh remove replace-this-example-task`) once the project has real work queued."
+id = "scaffold-the-gradle-android-project-in-a-container"
+title = "Scaffold the Gradle Android project in a container"
+description = "Create the Kotlin Android app module (minSdk 26 for openProxyFileDescriptor, target current), Material 3 theme, Gradle wrapper, and a Dockerfile/compose builder holding the SDK+JDK so 'docker compose run builder ./gradlew assembleDebug' works from a fresh checkout. Document the builder in docs/tools.md and the build/run steps in README.md."
 status = "active"
-category = "chore"
-urgency = "normal"
+category = "feature"
+urgency = "critical"
 order = 10
-created = 1970-01-01
-tags = []
+created = 2026-08-03
+tags = ["build"]
+
+[[task]]
+id = "define-the-host-identity-key-data-model"
+title = "Define the Host / Identity / Key data model"
+description = "Three separate first-class entities persisted with Room: Key (name, type, private+public material, passphrase state, imported-or-generated), Identity (name, username, optional password, optional link to a Key), Host (name, address, port, optional default Identity, freeform extra connect args for proxy/jump/ssh options). Identity references a Key; Host references a default Identity; deleting a referenced row is blocked or nulled explicitly. Record the schema in docs/architecture.md."
+status = "active"
+category = "feature"
+urgency = "critical"
+order = 20
+created = 2026-08-03
+tags = ["data"]
+
+[[task]]
+id = "keys-screen-list-generate-and-import-key-pairs"
+title = "Keys screen: list, generate, and import key pairs"
+description = "Material 3 screen listing stored keys with add/edit/delete. Generate ed25519 or RSA pairs on-device, or import an existing private key via the system file picker or paste; show and copy the public key for pasting into authorized_keys. Handle passphrase-protected keys."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 30
+created = 2026-08-03
+tags = ["ui"]
+
+[[task]]
+id = "identities-screen-username-plus-password-or-key"
+title = "Identities screen: username plus password or key"
+description = "Material 3 CRUD screen for identities: name, username, and either an optional password or a link to a stored key (or both, for key-with-password fallback). Validates that an identity has at least one usable credential."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 40
+created = 2026-08-03
+tags = ["ui"]
+
+[[task]]
+id = "hosts-screen-address-port-default-identity-extra-args"
+title = "Hosts screen: address, port, default identity, extra args"
+description = "Material 3 CRUD screen for hosts: display name, address, port (default 22), optional default identity, and an extra-arguments field for proxy jump and other ssh options. Includes a 'Test connection' action reporting success or the failure reason."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 50
+created = 2026-08-03
+tags = ["ui"]
+
+[[task]]
+id = "app-shell-bottom-navigation-over-hosts-identities-keys"
+title = "App shell: bottom navigation over Hosts, Identities, Keys"
+description = "Single-activity Jetpack Compose Material 3 shell with bottom navigation between the three sections plus a connections/status view showing which hosts are currently connected, with connect and disconnect controls."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 60
+created = 2026-08-03
+tags = ["ui"]
+
+[[task]]
+id = "encrypt-credentials-at-rest-with-the-android-keystore"
+title = "Encrypt credentials at rest with the Android Keystore"
+description = "Store private keys and passwords encrypted under a Keystore-backed key (EncryptedSharedPreferences or an encrypted Room column); nothing sensitive lands in plaintext prefs or the database. Optional biometric or device-credential gate before unlocking."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 70
+created = 2026-08-03
+tags = ["security"]
+
+[[task]]
+id = "ssh-sftp-transport-layer"
+title = "SSH/SFTP transport layer"
+description = "Wrap SSHJ behind a small internal interface: connect using a Host plus Identity, host-key verification with a trust-on-first-use known-hosts store, proxy/jump support from the host's extra args, and SFTP operations (list, stat, open, read, write, mkdir, rename, delete). Reconnect on transient failure."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 80
+created = 2026-08-03
+tags = ["ssh"]
+
+[[task]]
+id = "connection-manager-foreground-service"
+title = "Connection manager foreground service"
+description = "Foreground service owning the live SSH sessions and a persistent notification listing connected hosts, so Android does not kill connections while another app browses. Exposes connect and disconnect, and calls ContentResolver.notifyChange on the roots URI whenever the connected set changes."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 90
+created = 2026-08-03
+tags = ["provider"]
+
+[[task]]
+id = "documentsprovider-roots-and-directory-listing"
+title = "DocumentsProvider: roots and directory listing"
+description = "DocumentsProvider subclass registered with the DOCUMENTS_PROVIDER intent filter and MANAGE_DOCUMENTS permission. queryRoots emits one root per connected host; queryDocument and queryChildDocuments map SFTP stat and listing results to SAF columns. All SFTP work happens off the binder thread."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 100
+created = 2026-08-03
+tags = ["provider"]
+
+[[task]]
+id = "documentsprovider-streaming-file-read-write"
+title = "DocumentsProvider: streaming file read/write"
+description = "openDocument backed by StorageManager.openProxyFileDescriptor and a ProxyFileDescriptorCallback running on a handler thread, so reads and writes stream over SFTP on demand instead of downloading whole files. Falls back to a cached temp file where the proxy FD is not usable. Also implements createDocument, deleteDocument, and renameDocument."
+status = "active"
+category = "feature"
+urgency = "high"
+order = 110
+created = 2026-08-03
+tags = ["provider"]
+
+[[task]]
+id = "metadata-cache-for-listings-and-stats"
+title = "Metadata cache for listings and stats"
+description = "Short-TTL in-memory cache of directory listings and stat results, invalidated on writes and on reconnect, because file pickers query aggressively and SFTP round-trips are slow."
+status = "active"
+category = "feature"
+urgency = "normal"
+order = 120
+created = 2026-08-03
+tags = ["perf"]
+
+[[task]]
+id = "tests-unit-plus-instrumented-saf-coverage"
+title = "Tests: unit plus instrumented SAF coverage"
+description = "Unit tests for the data model, credential encryption, and the SFTP wrapper against a local test SSH server; instrumented tests driving the DocumentsProvider through ContentResolver on the emulator harness."
+status = "active"
+category = "test"
+urgency = "normal"
+order = 130
+created = 2026-08-03
+tags = ["test"]
+
+[[task]]
+id = "readme-and-architecture-docs-for-the-shipped-app"
+title = "README and architecture docs for the shipped app"
+description = "Write README.md (what it is, install, configuring keys/identities/hosts, how the roots show up in the file picker, known limits such as apps needing a raw file path) and fill docs/architecture.md with the data flow, module layout, and design decisions."
+status = "active"
+category = "docs"
+urgency = "normal"
+order = 140
+created = 2026-08-03
+tags = ["docs"]

@@ -66,6 +66,11 @@ transport. Single app — no server half.
   when that happens.
 - **Credential storage** in the Android Keystore / `EncryptedSharedPreferences` — keys and
   passwords never land in plaintext prefs.
+- A **Jetpack Compose / Material 3 UI** over three separate first-class entities —
+  **Keys** (generated on-device or imported), **Identities** (username plus an optional
+  password and/or a link to a Key), and **Hosts** (address, port, an optional default
+  Identity, and extra connect arguments for proxy/jump and other ssh options) — plus a
+  connections view. Native Android tooling only; this app is Android-only.
 - A **metadata cache** for directory listings and stat results; SFTP round-trips are slow and
   file pickers query aggressively.
 
