@@ -15,3 +15,13 @@ order = "newest first"
 [meta.rules]
 finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, append-only."
 growth = "This file only grows; nothing is removed from it."
+
+[[task]]
+id = "scaffold-the-gradle-android-project-in-a-container"
+title = "Scaffold the Gradle Android project in a container"
+description = "Create the Kotlin Android app module (minSdk 26 for openProxyFileDescriptor, target current), Material 3 theme, and Gradle wrapper. Build it through the existing containerized pipeline at /data/android (./build.sh <project-dir> :app:assembleDebug) and test on its headless emulator — do not add a project-local Dockerfile and do not build against the host toolchain. Record the build/run steps in README.md."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["build"]
