@@ -23,7 +23,7 @@ scope = "[Project scope rule — what is in and out of bounds for this project.]
 [[task]]
 id = "scaffold-the-gradle-android-project-in-a-container"
 title = "Scaffold the Gradle Android project in a container"
-description = "Create the Kotlin Android app module (minSdk 26 for openProxyFileDescriptor, target current), Material 3 theme, Gradle wrapper, and a Dockerfile/compose builder holding the SDK+JDK so 'docker compose run builder ./gradlew assembleDebug' works from a fresh checkout. Document the builder in docs/tools.md and the build/run steps in README.md."
+description = "Create the Kotlin Android app module (minSdk 26 for openProxyFileDescriptor, target current), Material 3 theme, and Gradle wrapper. Build it through the existing containerized pipeline at /data/android (./build.sh <project-dir> :app:assembleDebug) and test on its headless emulator — do not add a project-local Dockerfile and do not build against the host toolchain. Record the build/run steps in README.md."
 status = "active"
 category = "feature"
 urgency = "critical"
