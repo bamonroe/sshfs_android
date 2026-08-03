@@ -5,14 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.bam.sshfs.crypto.SshSecurity
-import com.bam.sshfs.ui.hosts.HostsScreen
+import com.bam.sshfs.ui.shell.AppShell
 import com.bam.sshfs.ui.theme.SshfsTheme
 
 /**
  * Launcher activity — hosts the Compose UI.
  *
- * Shows the Hosts screen directly for now; the Hosts / Identities / Keys bottom
- * navigation replaces this in the app-shell task.
+ * Everything lives in [AppShell]: one activity, bottom navigation over Connections,
+ * Hosts, Identities and Keys.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         SshSecurity.install()
         setContent {
             SshfsTheme {
-                HostsScreen()
+                AppShell()
             }
         }
     }

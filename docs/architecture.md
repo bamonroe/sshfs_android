@@ -17,7 +17,9 @@ how a user builds and runs the app.
 | `…/ui/keys/` | The Keys screen: list, generate, import, show/copy public key |
 | `…/ui/identities/` | The Identities screen: list, editor form + validation, delete/unlink |
 | `…/ui/hosts/` | The Hosts screen: list, editor form + validation, connection test |
-| `…/net/` | Transport-facing helpers: `ExtraArgs` parsing and the `ConnectionProbe` |
+| `…/ui/connections/` | The Connections screen: per-host state and the connect/disconnect controls |
+| `…/ui/shell/` | The single-activity shell: the `Destination` enum and its bottom nav bar |
+| `…/net/` | Transport-facing helpers: `ExtraArgs`, `ConnectionProbe`, `ConnectionRegistry` |
 | `app/schemas/` | Room's exported schema JSON (generated; also an androidTest asset) |
 | `docs/` | The spoke docs — this file and `tools.md` |
 
@@ -168,6 +170,21 @@ fingerprint, and hangs up. It deliberately does **not** authenticate: credential
 decrypted by the connection manager, not the UI, and what the user needs while typing an
 address is whether that address answers at all. A host setting `ProxyJump` is probed
 *directly* and the result says so, since jump handling belongs to the transport task.
+
+### The shell is an enum, and connection state is a singleton
+
+`Destination` (in `…/ui/shell/`) enumerates the four sections with their label and icon, so
+the nav bar is generated from it — adding a section is one enum entry, not a second list to
+keep in sync. `AppShell` owns only the nav bar; each section keeps its own `Scaffold`, top
+bar and FAB, which is why switching tabs can throw the section composable away: the state
+that matters lives in Room and in `ConnectionRegistry`.
+
+`ConnectionRegistry` (in `…/net/`) is a process-wide `StateFlow` of host id → state, held
+outside any ViewModel because the connection manager service — not the UI — will own the real
+sessions, and the nav-bar badge, the connections list, and later the `DocumentsProvider`'s
+roots all read the same map. Until that service lands, `ConnectionsViewModel` writes to the
+registry using the `ConnectionProbe` handshake, so *connected* means reachable, not
+authenticated.
 
 ## Data flow — SAF and the transport
 

@@ -2,6 +2,15 @@
 <resources>
     <string name="app_name">SSHFS</string>
 
+    <!-- Connections screen -->
+    <string name="connections_title">Connections</string>
+    <string name="connections_empty">No hosts to connect to yet.\n\nAdd one on the Hosts tab, then connect it here.</string>
+    <string name="connection_state_disconnected">Not connected</string>
+    <string name="connection_state_connecting">Connecting…</string>
+    <string name="connection_state_connected">Connected</string>
+    <string name="connection_state_connected_version">Connected · %1$s</string>
+    <string name="connection_state_failed">Failed · %1$s</string>
+
     <!-- Keys screen -->
     <string name="keys_title">Keys</string>
     <string name="keys_empty">No keys yet.\n\nGenerate a pair on this device, or import one you already use.</string>
@@ -103,4 +112,6 @@
     <string name="action_copy">Copy</string>
     <string name="action_close">Close</string>
     <string name="action_more">More</string>
+    <string name="action_connect">Connect</string>
+    <string name="action_disconnect">Disconnect</string>
 </resources>

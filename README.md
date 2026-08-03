@@ -10,10 +10,10 @@ storage, via the Storage Access Framework. See `CLAUDE.md` for what the project 
 
 ## Status
 
-Early. The app builds, installs, and opens on the **Hosts** screen. The Keys, Identities, and
-Hosts screens are each fully working, but only Hosts is reachable — the app shell that
-navigates between all three, the SSH transport, and the `DocumentsProvider` are still to
-come.
+Early. The app builds, installs, and opens on the **Connections** tab, with bottom navigation
+over Connections, Hosts, Identities and Keys. The Keys, Identities and Hosts screens are each
+fully working; the SSH transport, the connection service, and the `DocumentsProvider` are
+still to come, so "connecting" a host currently only checks that it answers.
 
 > **Keys are not yet encrypted at rest.** Private keys currently sit in the app's private
 > database base64-encoded, not Keystore-encrypted — that lands with the credential-storage
@@ -62,8 +62,7 @@ those defaults first.
 
 ## Managing hosts
 
-A **host** is a server you want to browse. The Hosts screen is the first thing the app opens.
-**Add host** asks for:
+A **host** is a server you want to browse. **Add host** asks for:
 
 - **Name** — the label you'll see, and the name of this server's root in the file picker.
 - **Address** and **Port** — the hostname or IP, and the port. Leave the port blank for the
@@ -90,8 +89,19 @@ A host with `ProxyJump` set is dialled directly and the result says so.
 The **More** menu on a host offers **Edit** and **Delete**. Nothing references a host, so
 deleting only asks for a confirmation; the server itself is untouched.
 
-> Only the Hosts screen is reachable right now — the bottom navigation over Hosts /
-> Identities / Keys lands with the app-shell task in `TODO.toml`.
+## Getting around, and connecting
+
+The bottom bar switches between four sections — **Connections**, **Hosts**, **Identities**
+and **Keys**. Each keeps its own list and controls; the tab you're on survives rotation.
+
+The **Connections** tab lists every host you've added with its current state — *Not
+connected*, *Connecting…*, *Connected* (with the server's version banner), or *Failed* with
+the reason. **Connect** and **Disconnect** are on each row, and the tab's icon carries a badge
+counting the hosts that are up.
+
+> **Connecting doesn't sign in yet.** Until the transport and connection-manager tasks land,
+> **Connect** runs the same unauthenticated handshake as **Test connection** — a host shown as
+> connected is reachable, not logged in, and nothing appears in the file picker yet.
 
 ## Requirements
 
