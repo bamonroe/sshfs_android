@@ -15,6 +15,7 @@ how a user builds and runs the app.
 | `…/crypto/` | Key generation, import/parsing, OpenSSH text formats, secret storage |
 | `…/ui/` | Compose screens and the Material 3 theme |
 | `…/ui/keys/` | The Keys screen: list, generate, import, show/copy public key |
+| `…/ui/identities/` | The Identities screen: list, editor form + validation, delete/unlink |
 | `app/schemas/` | Room's exported schema JSON (generated; also an androidTest asset) |
 | `docs/` | The spoke docs — this file and `tools.md` |
 
@@ -127,6 +128,21 @@ is seconds of CPU and must not touch the main thread.
 ViewModel, and the schema already speak in ciphertext blobs; the credential-storage task
 swaps in the Keystore-backed implementation without touching a call site. Until then, the
 private key column is *not* actually protected — see `TODO.toml`.
+
+## UI — editing secrets you can't read back
+
+`IdentityForm` (in `…/ui/identities/`) is the editable state of one identity, kept free of
+Compose and Android types so its rules are plain unit tests. Two decisions live in it:
+
+- **A stored password is never decrypted into the UI.** The form's `password` field carries
+  an *intent*, not a value: `null` leaves the stored ciphertext untouched, `""` clears it,
+  and anything else replaces it. `IdentitiesViewModel.passwordFor` is the only place that
+  resolves the three cases against the existing row.
+- **An identity must be usable.** `validate()` rejects a blank name or username, and rejects
+  a draft with neither a password nor a key — the schema allows that row, but nothing could
+  ever connect with it, so the editor won't create one.
+
+Host editing will follow the same shape when that screen lands.
 
 ## Data flow — SAF and the transport
 

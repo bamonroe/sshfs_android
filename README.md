@@ -40,6 +40,30 @@ The **More** menu on a key offers:
 - **Delete** — refused with a count when identities still use the key, and offered again as
   **Unlink and delete**, which clears those links first.
 
+## Managing identities
+
+An **identity** is how you sign in: a username plus a password, a stored key, or both (the
+key is tried first and the password acts as the fallback). Keeping identities separate from
+hosts means the same login can serve several servers without re-entering it.
+
+**Add identity** asks for a display name, the username, an optional password, and an
+optional key picked from the Keys screen. Saving is refused until the identity has a name, a
+username, and at least one credential — an identity with neither password nor key can't
+connect, so the editor won't create one.
+
+A stored password is never shown again. When you edit an identity that has one, the password
+field starts empty and reads *"A password is stored"*; type to replace it, or use **Remove
+stored password** to clear it. Each identity in the list shows its username and which
+credentials it carries.
+
+The **More** menu offers **Edit** and **Delete**. Deleting is refused with a count when hosts
+still default to that identity, and offered again as **Unlink and delete**, which clears
+those defaults first.
+
+> The Identities screen is not reachable from the UI yet — the app still opens straight onto
+> Keys. The bottom navigation over Hosts / Identities / Keys lands with the app-shell task in
+> `TODO.toml`.
+
 ## Requirements
 
 Nothing on the host but Docker — the JDK, Android SDK, and Gradle all live in the

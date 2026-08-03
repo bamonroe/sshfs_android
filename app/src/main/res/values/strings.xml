@@ -27,6 +27,31 @@
     <string name="key_passphrase_badge">passphrase</string>
     <string name="key_fingerprint_unavailable">fingerprint unavailable</string>
 
+    <!-- Identities screen -->
+    <string name="identities_title">Identities</string>
+    <string name="identities_empty">No identities yet.\n\nAn identity is a username plus the password or key it signs in with.</string>
+    <string name="identity_add_title">Add identity</string>
+    <string name="identity_edit_title">Edit identity</string>
+    <string name="identity_delete_title">Delete identity?</string>
+    <string name="identity_delete_body">“%1$s” will be removed from this device, along with any password stored for it.</string>
+    <string name="identity_in_use_title">Identity still in use</string>
+    <string name="identity_in_use_body">“%1$s” is the default for %2$d hosts. Deleting it unlinks them; those hosts will need another identity to connect.</string>
+    <string name="identity_field_name">Name</string>
+    <string name="identity_field_username">Username</string>
+    <string name="identity_field_password">Password</string>
+    <string name="identity_field_key">Key</string>
+    <string name="identity_key_none">No key</string>
+    <string name="identity_key_empty_hint">No keys stored yet — generate or import one on the Keys screen.</string>
+    <string name="identity_password_hint">Optional when a key is chosen</string>
+    <string name="identity_password_stored">A password is stored. Type to replace it.</string>
+    <string name="identity_password_cleared">The stored password will be removed on save.</string>
+    <string name="identity_badge_password">password</string>
+    <string name="identity_badge_key">key: %1$s</string>
+    <string name="identity_badge_none">no credentials — cannot connect</string>
+    <string name="identity_error_name">Give the identity a name.</string>
+    <string name="identity_error_username">Enter the username to sign in as.</string>
+    <string name="identity_error_no_credential">Set a password, choose a key, or both.</string>
+
     <!-- Actions -->
     <string name="action_add_key">Add key</string>
     <string name="action_generate">Generate</string>
@@ -34,6 +59,9 @@
     <string name="action_pick_key_file">Pick a key file…</string>
     <string name="action_show_public_key">Show public key</string>
     <string name="action_rename">Rename</string>
+    <string name="action_add_identity">Add identity</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_remove_password">Remove stored password</string>
     <string name="action_delete">Delete</string>
     <string name="action_unlink_delete">Unlink and delete</string>
     <string name="action_cancel">Cancel</string>

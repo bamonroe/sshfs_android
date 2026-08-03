@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "identities-screen-username-plus-password-or-key"
+title = "Identities screen: username plus password or key"
+description = "Material 3 CRUD screen for identities: name, username, and either an optional password or a link to a stored key (or both, for key-with-password fallback). Validates that an identity has at least one usable credential."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["ui"]
+
+[[task]]
 id = "keys-screen-list-generate-and-import-key-pairs"
 title = "Keys screen: list, generate, and import key pairs"
 description = "Material 3 screen listing stored keys with add/edit/delete. Generate ed25519 or RSA pairs on-device, or import an existing private key via the system file picker or paste; show and copy the public key for pasting into authorized_keys. Handle passphrase-protected keys."
