@@ -16,6 +16,8 @@ how a user builds and runs the app.
 | `…/ui/` | Compose screens and the Material 3 theme |
 | `…/ui/keys/` | The Keys screen: list, generate, import, show/copy public key |
 | `…/ui/identities/` | The Identities screen: list, editor form + validation, delete/unlink |
+| `…/ui/hosts/` | The Hosts screen: list, editor form + validation, connection test |
+| `…/net/` | Transport-facing helpers: `ExtraArgs` parsing and the `ConnectionProbe` |
 | `app/schemas/` | Room's exported schema JSON (generated; also an androidTest asset) |
 | `docs/` | The spoke docs — this file and `tools.md` |
 
@@ -142,7 +144,30 @@ Compose and Android types so its rules are plain unit tests. Two decisions live 
   a draft with neither a password nor a key — the schema allows that row, but nothing could
   ever connect with it, so the editor won't create one.
 
-Host editing will follow the same shape when that screen lands.
+`HostForm` (in `…/ui/hosts/`) follows the same shape — a plain data class, unit-tested:
+
+- **The port stays a string while it's being typed.** A numeric field can't express "blank
+  means the default", which is what the user almost always wants; `effectivePort` resolves an
+  empty field to `DEFAULT_SSH_PORT` and `validate()` only complains about a *typed* port that
+  isn't a real TCP port.
+- **Extra arguments are validated, not interpreted.** The editor won't save a line the
+  transport couldn't act on, but it doesn't police *which* ssh options are allowed.
+
+### Extra connect arguments live in `…/net/ExtraArgs`
+
+The freeform per-host options are `ssh_config`-style: one `Option value` per line, `#`
+comments and blank lines ignored, `space`/`tab`/`=` all accepted as the separator. Parsing
+sits in `…/net/` rather than the UI package because the transport reads the same text when it
+opens a connection — the editor and the connection must never disagree about what a line
+means.
+
+### "Test connection" stops before authentication
+
+`ConnectionProbe` opens an SSHJ transport, records the server's version banner and host-key
+fingerprint, and hangs up. It deliberately does **not** authenticate: credentials are
+decrypted by the connection manager, not the UI, and what the user needs while typing an
+address is whether that address answers at all. A host setting `ProxyJump` is probed
+*directly* and the result says so, since jump handling belongs to the transport task.
 
 ## Data flow — SAF and the transport
 

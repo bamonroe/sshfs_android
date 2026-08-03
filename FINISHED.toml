@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "hosts-screen-address-port-default-identity-extra-args"
+title = "Hosts screen: address, port, default identity, extra args"
+description = "Material 3 CRUD screen for hosts: display name, address, port (default 22), optional default identity, and an extra-arguments field for proxy jump and other ssh options. Includes a 'Test connection' action reporting success or the failure reason."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["ui"]
+
+[[task]]
 id = "identities-screen-username-plus-password-or-key"
 title = "Identities screen: username plus password or key"
 description = "Material 3 CRUD screen for identities: name, username, and either an optional password or a link to a stored key (or both, for key-with-password fallback). Validates that an identity has at least one usable credential."

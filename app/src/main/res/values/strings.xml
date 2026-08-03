@@ -52,6 +52,38 @@
     <string name="identity_error_username">Enter the username to sign in as.</string>
     <string name="identity_error_no_credential">Set a password, choose a key, or both.</string>
 
+    <!-- Hosts screen -->
+    <string name="hosts_title">Hosts</string>
+    <string name="hosts_empty">No hosts yet.\n\nAdd a server to browse it from the system file picker.</string>
+    <string name="host_add_title">Add host</string>
+    <string name="host_edit_title">Edit host</string>
+    <string name="host_delete_title">Delete host?</string>
+    <string name="host_delete_body">“%1$s” will be removed from this device. The server itself is untouched.</string>
+    <string name="host_field_name">Name</string>
+    <string name="host_field_address">Address</string>
+    <string name="host_field_port">Port</string>
+    <string name="host_port_default">22</string>
+    <string name="host_field_identity">Default identity</string>
+    <string name="host_identity_none">No identity</string>
+    <string name="host_identity_entry">%1$s (%2$s)</string>
+    <string name="host_identity_empty_hint">No identities yet — add one on the Identities screen.</string>
+    <string name="host_field_remote_root">Remote directory</string>
+    <string name="host_field_remote_root_hint">Where the root opens; blank means the login directory</string>
+    <string name="host_field_extra_args">Extra connect arguments</string>
+    <string name="host_field_extra_args_hint">One ssh option per line, e.g. “ProxyJump bastion.example.com”</string>
+    <string name="host_extra_args_bad_line">Line %1$d needs a value: “%2$s”</string>
+    <string name="host_badge_identity">as %1$s</string>
+    <string name="host_badge_no_identity">no default identity</string>
+    <string name="host_badge_options">%1$d extra options</string>
+    <string name="host_test_running">Testing…</string>
+    <string name="host_test_ok">Reachable — %1$s\nHost key %2$s</string>
+    <string name="host_test_proxy_ignored">ProxyJump was not used; this test dials the address directly.</string>
+    <string name="host_test_failed">Could not connect: %1$s</string>
+    <string name="host_error_name">Give the host a name.</string>
+    <string name="host_error_address">Enter the hostname or IP address.</string>
+    <string name="host_error_port">Port must be between 1 and 65535.</string>
+    <string name="host_error_extra_args">Every extra argument needs an option and a value.</string>
+
     <!-- Actions -->
     <string name="action_add_key">Add key</string>
     <string name="action_generate">Generate</string>
@@ -60,6 +92,8 @@
     <string name="action_show_public_key">Show public key</string>
     <string name="action_rename">Rename</string>
     <string name="action_add_identity">Add identity</string>
+    <string name="action_add_host">Add host</string>
+    <string name="action_test_connection">Test connection</string>
     <string name="action_edit">Edit</string>
     <string name="action_remove_password">Remove stored password</string>
     <string name="action_delete">Delete</string>

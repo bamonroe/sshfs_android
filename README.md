@@ -10,10 +10,10 @@ storage, via the Storage Access Framework. See `CLAUDE.md` for what the project 
 
 ## Status
 
-Early. The app builds, installs, and opens on the **Keys** screen, which is fully working:
-generate a pair on-device, import one you already use, and copy the public key out. The
-Identities and Hosts screens, the app shell that navigates between all three, the SSH
-transport, and the `DocumentsProvider` are still to come.
+Early. The app builds, installs, and opens on the **Hosts** screen. The Keys, Identities, and
+Hosts screens are each fully working, but only Hosts is reachable — the app shell that
+navigates between all three, the SSH transport, and the `DocumentsProvider` are still to
+come.
 
 > **Keys are not yet encrypted at rest.** Private keys currently sit in the app's private
 > database base64-encoded, not Keystore-encrypted — that lands with the credential-storage
@@ -21,7 +21,7 @@ transport, and the `DocumentsProvider` are still to come.
 
 ## Managing keys
 
-The Keys screen is the first thing the app opens. **Add key** offers two routes:
+**Add key** offers two routes:
 
 - **Generate** — name the pair, optionally give it a comment (appended to the public key
   exactly as `ssh-keygen` does), and pick **Ed25519** (recommended) or **RSA 3072-bit**.
@@ -60,9 +60,38 @@ The **More** menu offers **Edit** and **Delete**. Deleting is refused with a cou
 still default to that identity, and offered again as **Unlink and delete**, which clears
 those defaults first.
 
-> The Identities screen is not reachable from the UI yet — the app still opens straight onto
-> Keys. The bottom navigation over Hosts / Identities / Keys lands with the app-shell task in
-> `TODO.toml`.
+## Managing hosts
+
+A **host** is a server you want to browse. The Hosts screen is the first thing the app opens.
+**Add host** asks for:
+
+- **Name** — the label you'll see, and the name of this server's root in the file picker.
+- **Address** and **Port** — the hostname or IP, and the port. Leave the port blank for the
+  default, 22.
+- **Default identity** — which login from the Identities screen this host uses, or none.
+- **Remote directory** — where the root opens. Blank means the login directory.
+- **Extra connect arguments** — freeform ssh options, one `Option value` per line, with `#`
+  comments allowed. This is where a jump host goes:
+
+  ```
+  ProxyJump bastion.example.com
+  ServerAliveInterval 30
+  ```
+
+  A line with a keyword but no value is flagged inline and blocks the save; which options
+  are meaningful is left to the transport rather than policed by the editor.
+
+**Test connection** dials the draft *without saving it*, so you can check an address as you
+type. Success reports the server's version banner and its host-key fingerprint; failure
+reports why — an unknown host name, a refused connection, or a timeout. The test stops
+before signing in, so it tells you the server is reachable, not that your credentials work.
+A host with `ProxyJump` set is dialled directly and the result says so.
+
+The **More** menu on a host offers **Edit** and **Delete**. Nothing references a host, so
+deleting only asks for a confirmation; the server itself is untouched.
+
+> Only the Hosts screen is reachable right now — the bottom navigation over Hosts /
+> Identities / Keys lands with the app-shell task in `TODO.toml`.
 
 ## Requirements
 

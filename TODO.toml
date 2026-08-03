@@ -21,17 +21,6 @@ finish_work = "When a task is fully finished (built, tested, documented), run `s
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
 
 [[task]]
-id = "hosts-screen-address-port-default-identity-extra-args"
-title = "Hosts screen: address, port, default identity, extra args"
-description = "Material 3 CRUD screen for hosts: display name, address, port (default 22), optional default identity, and an extra-arguments field for proxy jump and other ssh options. Includes a 'Test connection' action reporting success or the failure reason."
-status = "active"
-category = "feature"
-urgency = "high"
-order = 50
-created = 2026-08-03
-tags = ["ui"]
-
-[[task]]
 id = "app-shell-bottom-navigation-over-hosts-identities-keys"
 title = "App shell: bottom navigation over Hosts, Identities, Keys"
 description = "Single-activity Jetpack Compose Material 3 shell with bottom navigation between the three sections plus a connections/status view showing which hosts are currently connected, with connect and disconnect controls."
