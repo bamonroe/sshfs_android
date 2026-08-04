@@ -237,10 +237,11 @@ The path splits into four Android-free pieces plus two that talk to the database
 | `BackupCrypto` | The passphrase envelope: PBKDF2-HMAC-SHA256 (210 000 rounds) → AES-256-GCM |
 | `BackupFile` | The file name and MIME type offered to the save dialog, for both variants |
 | `ConfigOnly` | Strips every secret out of a document, for the unencrypted export |
+| `BackupHashes` | Content hashes that give each element a name-independent identity |
 | `BackupExporter` | Reads the DAOs and unseals into a `BackupDocument` |
 | `BackupRestorer` | Re-seals a document and inserts it, remapping ids |
 
-Four things worth knowing:
+Five things worth knowing:
 
 - **The file is a header line plus base64 fields**, not opaque bytes: `sshfs-backup-v1`, the KDF
   name, the iteration count, the salt, the IV, the data. A future iteration count or cipher is
@@ -255,6 +256,17 @@ Four things worth knowing:
   keys; a colliding name gets a ` (2)` suffix. Nothing is deleted, so restoring the wrong file
   is recoverable by hand. A reference the document doesn't contain is dropped rather than
   failing the whole restore.
+- **Identity is the content hash, not the name.** `BackupHashes` gives every element a SHA-256
+  over its content; an element whose hash is already installed is skipped and everything
+  pointing at it is remapped onto the row already there, so restoring the same backup twice is
+  idempotent instead of growing a `laptop (2)`, `laptop (3)` tail. Two rules make the hashes
+  stable: **secrets are excluded** (so a config-only export matches the full backup it was
+  stripped from, and can't bury a usable key under a placeholder copy), and **references are
+  hashed rather than id'd** (an identity commits to its key's hash, a host to its identity's),
+  so the meaning survives the id remapping. Ids and `createdAt` are per-install bookkeeping and
+  are not hashed. `BackupJson` records each hash in the file for the reader's benefit but
+  **ignores it on the way back in** — the restore recomputes, so a hand-edited config file
+  can't carry a stale hash that makes a new element look like an installed one.
 - **The export is sealed before the save dialog opens.** `BackupViewModel` produces the finished
   file text, *then* launches `CreateDocument`; a cancelled save drops it. The unlock prompt is
   raised once, up front, over every blob the pass will open (`BackupExporter.sealedSecrets`),

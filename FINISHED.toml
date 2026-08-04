@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "hash-backup-elements-and-dedupe-on-restore-by-hash"
+title = "Hash backup elements and dedupe on restore by hash"
+description = "Compute a hash of each element in a backup (each key, identity, host, and any other config entry) and record it in the backup manifest alongside the entry. On restore, use the manifest hashes to detect elements that already exist locally and skip them instead of creating duplicates — identity is determined by hash, not by name."
+status = "finished"
+category = "feature"
+created = 2026-08-04
+completed = 2026-08-04
+tags = ["backup", "restore"]
+
+[[task]]
 id = "unencrypted-config-only-backup-no-private-keys"
 title = "Unencrypted config-only backup (no private keys)"
 description = "Export all configuration details (identities, hosts, ports, options, public keys) as a plaintext/unencrypted file that deliberately excludes private key material, for sharing or version control. Restore should prompt for the missing keys."

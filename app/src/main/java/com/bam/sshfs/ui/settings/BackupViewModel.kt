@@ -175,12 +175,17 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
             app.getString(R.string.auth_prompt_restore),
         )
         val result = withContext(Dispatchers.IO) { restorer.restore(document) }
-        val done = app.getString(
+        var done = app.getString(
             R.string.backup_restore_done,
             result.keys,
             result.identities,
             result.hosts,
         )
+        // Say what the hash dedupe skipped, so "restored 0 keys" reads as "already had
+        // them" rather than as a silent failure.
+        if (result.skipped > 0) {
+            done += " " + app.getString(R.string.backup_restore_skipped, result.skipped)
+        }
         // Placeholder keys are the one thing a restore can't finish on its own, so the
         // message names them instead of leaving the user to find the badge.
         _message.value = if (result.incompleteKeys.isEmpty()) done else {

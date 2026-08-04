@@ -147,6 +147,7 @@
     <string name="action_export_config">Export config only\u2026</string>
     <string name="backup_config_export_done">Configuration exported. It contains no private keys or passwords.</string>
     <string name="backup_restore_incomplete">These keys still need their private half: %1$s.</string>
+    <string name="backup_restore_skipped">%1$d entries were already here and were left alone.</string>
     <string name="key_placeholder_badge">Private key missing</string>
     <string name="key_placeholder_no_export">This key has no private half to export yet.</string>
     <string name="action_supply_private_key">Supply private key\u2026</string>

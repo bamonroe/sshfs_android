@@ -123,6 +123,25 @@ class ConfigOnlyTest {
     }
 
     @Test
+    fun `a config-only file matches the key it was stripped from`() = runBlocking {
+        val (keys, identities, hosts) = source()
+        val document = BackupJson.decode(
+            BackupJson.encode(
+                BackupExporter(keys, identities, hosts, secrets).collectConfigOnly(now = 99),
+            ),
+        )
+
+        // Hashes cover no secret material, so the redacted key is recognised as the one
+        // already installed: restoring the config over its source must not bury a usable
+        // key under an unusable placeholder copy.
+        val result = BackupRestorer(keys, identities, hosts, secrets).restore(document)
+
+        assertEquals(RestoreResult(0, 0, 0, skipped = 3), result)
+        assertEquals(emptyList<String>(), result.incompleteKeys)
+        assertTrue(keys.all().single().hasPrivateHalf)
+    }
+
+    @Test
     fun `redaction is idempotent and leaves the configuration alone`() {
         val document = BackupDocument(
             createdAt = 1,

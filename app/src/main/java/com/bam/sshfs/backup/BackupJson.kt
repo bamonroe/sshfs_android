@@ -16,13 +16,33 @@ import org.json.JSONObject
  */
 object BackupJson {
 
-    fun encode(document: BackupDocument): String = JSONObject().apply {
-        put("version", document.version)
-        put("createdAt", document.createdAt)
-        put("keys", JSONArray(document.keys.map(::keyToJson)))
-        put("identities", JSONArray(document.identities.map(::identityToJson)))
-        put("hosts", JSONArray(document.hosts.map(::hostToJson)))
-    }.toString(2)
+    fun encode(document: BackupDocument): String {
+        val hashes = BackupHashes.of(document)
+        return JSONObject().apply {
+            put("version", document.version)
+            put("createdAt", document.createdAt)
+            put("keys", JSONArray(document.keys.map { keyToJson(it).hashed(hashes.keys[it.id]) }))
+            put(
+                "identities",
+                JSONArray(
+                    document.identities.map {
+                        identityToJson(it).hashed(hashes.identities[it.id])
+                    },
+                ),
+            )
+            put("hosts", JSONArray(document.hosts.map { hostToJson(it).hashed(hashes.hosts[it.id]) }))
+        }.toString(2)
+    }
+
+    /**
+     * Stamp an entry with its content hash.
+     *
+     * Recorded for the reader's and any external tool's benefit only: [decode] ignores
+     * it and the restore recomputes from content, so hand-editing a config-only file
+     * (which the README invites, to fill in placeholders) can't leave a stale hash that
+     * silently makes an element look like one that is already installed.
+     */
+    private fun JSONObject.hashed(hash: String?) = apply { put("hash", hash ?: "") }
 
     /**
      * Parse a document written by [encode].

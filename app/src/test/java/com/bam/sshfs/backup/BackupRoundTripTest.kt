@@ -88,21 +88,68 @@ class BackupRoundTripTest {
     }
 
     @Test
-    fun `merges into an install that already has the same names`() = runBlocking {
+    fun `restoring a backup over its own source duplicates nothing`() = runBlocking {
         val (keys, identities, hosts) = source()
         val document = BackupExporter(keys, identities, hosts, secrets).collect(now = 99)
 
-        // Restore the backup back over its own source: nothing is replaced, and the
-        // duplicate names are disambiguated rather than colliding.
+        // Every element hashes to something already installed, so the whole document is
+        // skipped instead of coming back as "laptop (2)".
         val result = BackupRestorer(keys, identities, hosts, secrets).restore(document)
 
+        assertEquals(RestoreResult(0, 0, 0, skipped = 3), result)
+        assertEquals(listOf("laptop"), keys.all().map { it.name })
+        assertEquals(1, identities.all().size)
+        assertEquals(1, hosts.all().size)
+    }
+
+    @Test
+    fun `a same-named but different element still comes back alongside`() = runBlocking {
+        val (keys, identities, hosts) = source()
+        val document = BackupExporter(keys, identities, hosts, secrets).collect(now = 99)
+
+        // A second install whose "laptop" is a different key pair: the name matches but
+        // the content hash does not, so the backup's copy is kept as well.
+        val target = Triple(FakeKeyDao(), FakeIdentityDao(), FakeHostDao())
+        target.first.insert(
+            SshKey(
+                name = "laptop",
+                type = KeyType.ED25519,
+                privateKeyCiphertext = secrets.encrypt("OTHER"),
+                publicKey = "ssh-ed25519 BBBB other",
+                hasPassphrase = false,
+                passphraseCiphertext = null,
+                origin = KeyOrigin.GENERATED,
+                createdAt = 1,
+            ),
+        )
+
+        val result = BackupRestorer(target.first, target.second, target.third, secrets)
+            .restore(document)
+
         assertEquals(RestoreResult(1, 1, 1), result)
-        assertEquals(listOf("laptop", "laptop (2)"), keys.all().map { it.name })
-        assertEquals(2, hosts.all().size)
-        val restoredIdentity = identities.all().last()
+        assertEquals(listOf("laptop", "laptop (2)"), target.first.all().map { it.name })
+        val restoredIdentity = target.second.all().single()
         assertNotNull(restoredIdentity.keyId)
-        // The copy points at the *new* key, not at the original it was exported from.
-        assertEquals(keys.all().last().id, restoredIdentity.keyId)
+        // The copy points at the *new* key, not at the same-named one already there.
+        assertEquals(target.first.all().last().id, restoredIdentity.keyId)
+    }
+
+    @Test
+    fun `an already-present key adopts the local row instead of a copy`() = runBlocking {
+        val (keys, identities, hosts) = source()
+        val document = BackupExporter(keys, identities, hosts, secrets).collect(now = 99)
+
+        // Only the key is already installed; the identity that referenced it in the
+        // backup has to be remapped onto that local row rather than a fresh insert.
+        val target = Triple(FakeKeyDao(), FakeIdentityDao(), FakeHostDao())
+        val localKeyId = target.first.insert(keys.all().single().copy(id = 0))
+
+        val result = BackupRestorer(target.first, target.second, target.third, secrets)
+            .restore(document)
+
+        assertEquals(RestoreResult(0, 1, 1, skipped = 1), result)
+        assertEquals(1, target.first.all().size)
+        assertEquals(localKeyId, target.second.all().single().keyId)
     }
 
     @Test

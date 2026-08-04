@@ -20,6 +20,7 @@ data class RestoreResult(
     val identities: Int,
     val hosts: Int,
     val incompleteKeys: List<String> = emptyList(),
+    val skipped: Int = 0,
 )
 
 /**
@@ -32,6 +33,11 @@ data class RestoreResult(
  * that is already taken gets a suffix, because names are how the user tells rows
  * apart in the pickers.
  *
+ * An element whose [BackupHashes] content hash is already present locally is **skipped**
+ * — not inserted under a suffixed name — and everything pointing at it is remapped to
+ * the row that is already there. That is what makes restoring the same backup twice, or
+ * merging two backups taken from the same install, idempotent instead of duplicating.
+ *
  * Insert order is keys → identities → hosts, matching the foreign keys; a reference
  * the document doesn't actually contain is dropped rather than failing the restore.
  */
@@ -43,25 +49,51 @@ class BackupRestorer(
 ) {
 
     suspend fun restore(document: BackupDocument): RestoreResult {
-        val restoredKeys = restoreKeys(document)
-        val identityIds = restoreIdentities(document, restoredKeys.ids)
-        val hostCount = restoreHosts(document, identityIds)
+        val hashes = BackupHashes.of(document)
+        val restoredKeys = restoreKeys(document, hashes)
+        val restoredIdentities = restoreIdentities(document, hashes, restoredKeys.ids)
+        val restoredHosts = restoreHosts(document, hashes, restoredIdentities.ids)
         return RestoreResult(
-            keys = restoredKeys.ids.size,
-            identities = identityIds.size,
-            hosts = hostCount,
+            keys = restoredKeys.inserted,
+            identities = restoredIdentities.inserted,
+            hosts = restoredHosts.inserted,
             incompleteKeys = restoredKeys.incomplete,
+            skipped = restoredKeys.skipped + restoredIdentities.skipped + restoredHosts.skipped,
         )
     }
 
-    /** The id remapping for the restored keys, plus the names of the placeholder ones. */
-    private data class RestoredKeys(val ids: Map<Long, Long>, val incomplete: List<String>)
+    /**
+     * What one element type's pass did.
+     *
+     * [ids] maps every document id to a local row — the one just inserted, or the
+     * already-present row a matching hash pointed at — so the elements that reference
+     * it land on the right target either way.
+     */
+    private data class Restored(
+        val ids: Map<Long, Long>,
+        val inserted: Int,
+        val skipped: Int,
+        val incomplete: List<String> = emptyList(),
+    )
 
-    private suspend fun restoreKeys(document: BackupDocument): RestoredKeys {
-        val taken = keys.all().map { it.name }.toMutableSet()
+    private suspend fun restoreKeys(
+        document: BackupDocument,
+        hashes: DocumentHashes,
+    ): Restored {
+        val local = keys.all()
+        val existing = local.associateBy({ BackupHashes.key(it) }, { it.id })
+        val taken = local.map { it.name }.toMutableSet()
         val ids = mutableMapOf<Long, Long>()
         val incomplete = mutableListOf<String>()
+        var inserted = 0
+        var skipped = 0
         document.keys.forEach { key ->
+            val match = existing[hashes.keys[key.id]]
+            if (match != null) {
+                ids[key.id] = match
+                skipped++
+                return@forEach
+            }
             val name = uniqueName(key.name, taken)
             // A placeholder's empty private half is stored as-is: sealing "" would give
             // a blob that decrypts to nothing, which reads as a usable key everywhere.
@@ -79,18 +111,36 @@ class BackupRestorer(
                     createdAt = key.createdAt,
                 ),
             )
+            inserted++
         }
-        return RestoredKeys(ids, incomplete)
+        return Restored(ids, inserted, skipped, incomplete)
     }
 
-    /** @return old identity id → newly inserted id. */
     private suspend fun restoreIdentities(
         document: BackupDocument,
+        hashes: DocumentHashes,
         keyIds: Map<Long, Long>,
-    ): Map<Long, Long> {
-        val taken = identities.all().map { it.name }.toMutableSet()
-        return document.identities.associate { identity ->
-            val id = identities.insert(
+    ): Restored {
+        val local = identities.all()
+        // Local hashes have to resolve their key reference the same way the document's
+        // do, so a match means "same identity pointing at the same key".
+        val localKeyHashes = keys.all().associate { it.id to BackupHashes.key(it) }
+        val existing = local.associateBy(
+            { BackupHashes.identity(it, it.keyId?.let(localKeyHashes::get)) },
+            { it.id },
+        )
+        val taken = local.map { it.name }.toMutableSet()
+        val ids = mutableMapOf<Long, Long>()
+        var inserted = 0
+        var skipped = 0
+        document.identities.forEach { identity ->
+            val match = existing[hashes.identities[identity.id]]
+            if (match != null) {
+                ids[identity.id] = match
+                skipped++
+                return@forEach
+            }
+            ids[identity.id] = identities.insert(
                 Identity(
                     name = uniqueName(identity.name, taken),
                     username = identity.username,
@@ -99,17 +149,37 @@ class BackupRestorer(
                     createdAt = identity.createdAt,
                 ),
             )
-            identity.id to id
+            inserted++
         }
+        return Restored(ids, inserted, skipped)
     }
 
     private suspend fun restoreHosts(
         document: BackupDocument,
+        hashes: DocumentHashes,
         identityIds: Map<Long, Long>,
-    ): Int {
-        val taken = hosts.all().map { it.name }.toMutableSet()
+    ): Restored {
+        val local = hosts.all()
+        val localKeyHashes = keys.all().associate { it.id to BackupHashes.key(it) }
+        val localIdentityHashes = identities.all().associate {
+            it.id to BackupHashes.identity(it, it.keyId?.let(localKeyHashes::get))
+        }
+        val existing = local.associateBy(
+            { BackupHashes.host(it, it.defaultIdentityId?.let(localIdentityHashes::get)) },
+            { it.id },
+        )
+        val taken = local.map { it.name }.toMutableSet()
+        val ids = mutableMapOf<Long, Long>()
+        var inserted = 0
+        var skipped = 0
         document.hosts.forEach { host ->
-            hosts.insert(
+            val match = existing[hashes.hosts[host.id]]
+            if (match != null) {
+                ids[host.id] = match
+                skipped++
+                return@forEach
+            }
+            ids[host.id] = hosts.insert(
                 Host(
                     name = uniqueName(host.name, taken),
                     address = host.address,
@@ -120,8 +190,9 @@ class BackupRestorer(
                     createdAt = host.createdAt,
                 ),
             )
+            inserted++
         }
-        return document.hosts.size
+        return Restored(ids, inserted, skipped)
     }
 
     /** `name`, `name (2)`, `name (3)`… — the first spelling not already in [taken]. */

@@ -76,9 +76,15 @@ which is why it is encrypted, and why where you put the file matters.
 
 **Restore…** asks you to pick a backup file and then for its passphrase. A restore **adds** the
 file's entries to what is already stored — nothing is replaced or deleted — so restoring onto a
-device that already has hosts is safe. Keys, identities and hosts keep the links between them,
-and a name that is already taken comes back as `name (2)`. If the passphrase is wrong, or the
-file isn't a backup, you are told which and nothing is written.
+device that already has hosts is safe. Keys, identities and hosts keep the links between them.
+If the passphrase is wrong, or the file isn't a backup, you are told which and nothing is
+written.
+
+Entries you already have are recognised and left alone, so restoring the same backup twice
+changes nothing the second time. Matching is by **content, not name**: an entry counts as
+already installed when its key material, address, username and links are the same, however you
+have since renamed it. An entry that merely shares a name with a different one comes back
+alongside it as `name (2)`. The message after a restore says how many entries were skipped.
 
 ### Sharing a configuration without the keys
 
@@ -102,6 +108,10 @@ need filling in. Use **Keys → ⋯ → Supply private key…** on each one and 
 matching private key; the key keeps its name and every identity that points at it, so your hosts
 work the moment the material is in. Until then, a connection that relies on the key can't
 authenticate with it.
+
+Because entries are matched by content and the missing secrets are not part of that content, a
+config-only file poured back onto the device it came from is recognised as already installed:
+it is skipped, and your working keys are not replaced by placeholders.
 
 ## Managing keys
 
