@@ -9,6 +9,12 @@ object BackupFile {
     /** The extension the app writes and the restore picker expects to see. */
     const val EXTENSION = "sshfsbackup"
 
+    /** A config-only export is plain JSON, and says so, because it is meant to be read. */
+    const val CONFIG_MIME_TYPE = "application/json"
+
+    /** The extension for the secret-free variant — a different name so the two don't mix. */
+    const val CONFIG_EXTENSION = "sshfsconfig.json"
+
     /**
      * The name to offer in the save dialog, dated so successive backups sit next to
      * each other in a folder rather than overwriting one another.
@@ -17,4 +23,7 @@ object BackupFile {
      * stay clock-free and testable.
      */
     fun suggestedFileName(today: String): String = "sshfs-backup-$today.$EXTENSION"
+
+    /** As [suggestedFileName], for the unencrypted config-only export. */
+    fun suggestedConfigFileName(today: String): String = "sshfs-config-$today.$CONFIG_EXTENSION"
 }

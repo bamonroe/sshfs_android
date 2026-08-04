@@ -235,7 +235,8 @@ The path splits into four Android-free pieces plus two that talk to the database
 | `BackupDocument` | The plaintext model: keys, identities, hosts, and `FORMAT_VERSION` |
 | `BackupJson` | The document's JSON encoding, tolerant of missing optional fields |
 | `BackupCrypto` | The passphrase envelope: PBKDF2-HMAC-SHA256 (210 000 rounds) → AES-256-GCM |
-| `BackupFile` | The file name and MIME type offered to the save dialog |
+| `BackupFile` | The file name and MIME type offered to the save dialog, for both variants |
+| `ConfigOnly` | Strips every secret out of a document, for the unencrypted export |
 | `BackupExporter` | Reads the DAOs and unseals into a `BackupDocument` |
 | `BackupRestorer` | Re-seals a document and inserts it, remapping ids |
 
@@ -259,9 +260,37 @@ Four things worth knowing:
   raised once, up front, over every blob the pass will open (`BackupExporter.sealedSecrets`),
   rather than once per row half-way through.
 
+### The config-only variant
+
+Alongside the encrypted backup there is a second, deliberately **unencrypted** export: the same
+`BackupDocument`, run through `ConfigOnly.redact`, which empties every private key half and
+drops every key passphrase and identity password. What is left — hosts, ports, extra args,
+usernames, public keys, and the links between them — is safe to share or check into version
+control, which is the whole reason it exists and the reason it is plain JSON rather than sealed.
+
+It reuses the encrypted path rather than forking it, and the three decisions that make that work:
+
+- **The export never touches the Keystore.** `BackupExporter.collectConfigOnly` reads the same
+  DAOs but doesn't decrypt anything, so it needs no authentication prompt and works on a device
+  whose gated key is locked.
+- **Import sniffs the file instead of asking.** `BackupViewModel.startImport` reads the document
+  first and consults `BackupCrypto.isSealed`: an encrypted backup raises the passphrase dialog, a
+  config-only file restores straight away. One "Restore…" button handles both.
+- **A key with no private half restores as a placeholder**, with `privateKeyCiphertext` left
+  empty (`SshKey.hasPrivateHalf` is the way to ask). It is stored as `""` rather than sealed,
+  because sealing the empty string would produce a blob that decrypts fine and reads as a usable
+  key everywhere. Placeholders keep the id, name, public half and every identity link, so the
+  restored hosts are correct the moment the user fills the key in — Keys → **Supply private
+  key**, which rewrites the material on the existing row rather than making a second key.
+  `RestoreResult.incompleteKeys` names them so the restore message can point at them, the list
+  item shows a badge, and export/reseal/connect each skip the missing blob instead of failing on
+  it.
+
 Everything except the ViewModel is covered by unit tests: the envelope's round trip and each of
-its refusals, the JSON round trip and its tolerances, and an export → seal → open → restore pass
-against in-memory DAO fakes that asserts the remapped links and the name disambiguation.
+its refusals, the JSON round trip and its tolerances, an export → seal → open → restore pass
+against in-memory DAO fakes that asserts the remapped links and the name disambiguation, and a
+config-only pass that asserts no secret reaches the file and that the placeholder restores with
+its links intact.
 
 ## UI — editing secrets you can't read back
 

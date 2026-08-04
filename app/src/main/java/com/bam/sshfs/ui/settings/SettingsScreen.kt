@@ -71,12 +71,20 @@ fun SettingsScreen(
     val saver = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(BackupFile.MIME_TYPE),
     ) { uri: Uri? -> if (uri == null) backupVm.cancelSave() else backupVm.writeBackup(uri) }
+    // A separate launcher because the config-only file is plain JSON and says so; the
+    // contract's MIME type is fixed when the launcher is created, not when it fires.
+    val configSaver = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BackupFile.CONFIG_MIME_TYPE),
+    ) { uri: Uri? -> if (uri == null) backupVm.cancelSave() else backupVm.writeBackup(uri) }
     val opener = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri: Uri? -> uri?.let(backupVm::startImport) }
     LaunchedEffect(pendingFile) {
-        if (pendingFile != null) {
-            saver.launch(BackupFile.suggestedFileName(LocalDate.now().toString()))
+        val today = LocalDate.now().toString()
+        when {
+            pendingFile == null -> Unit
+            pendingFile!!.configOnly -> configSaver.launch(BackupFile.suggestedConfigFileName(today))
+            else -> saver.launch(BackupFile.suggestedFileName(today))
         }
     }
 
@@ -131,6 +139,14 @@ fun SettingsScreen(
                 ) {
                     Text(stringResource(R.string.action_restore))
                 }
+            }
+            Text(
+                text = stringResource(R.string.settings_config_backup_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(enabled = !backupBusy, onClick = backupVm::startConfigExport) {
+                Text(stringResource(R.string.action_export_config))
             }
         }
     }

@@ -80,6 +80,29 @@ device that already has hosts is safe. Keys, identities and hosts keep the links
 and a name that is already taken comes back as `name (2)`. If the passphrase is wrong, or the
 file isn't a backup, you are told which and nothing is written.
 
+### Sharing a configuration without the keys
+
+**Settings → Backup and restore → Export config only…** writes the same hosts, identities and
+public keys as a backup, but as **plain, unencrypted JSON** with the private keys, key
+passphrases and identity passwords left out. It is meant for the cases where a full backup is
+the wrong tool — handing a set of servers to a colleague, or checking the shape of your setup
+into version control.
+
+- There is no passphrase, and no authentication prompt: nothing secret is read, so there is
+  nothing to unlock. The suggested name is `sshfs-config-<date>.sshfsconfig.json`.
+- Open the file in any text editor and you can read and edit it; the private half of every key
+  is simply an empty string.
+- **Restore…** takes either kind of file — the app tells them apart and only asks for a
+  passphrase when the file is actually encrypted.
+
+Restoring a config-only file brings back every host and identity with its links intact. Each key
+comes back as a **placeholder**: right name, right algorithm, right public key, but no private
+half, marked *Private key missing* on the Keys screen. The restore message names the keys that
+need filling in. Use **Keys → ⋯ → Supply private key…** on each one and paste or pick the
+matching private key; the key keeps its name and every identity that points at it, so your hosts
+work the moment the material is in. Until then, a connection that relies on the key can't
+authenticate with it.
+
 ## Managing keys
 
 **Add key** offers two routes:
@@ -260,7 +283,7 @@ BAM_STORE_PUBLISH=0 /data/android/build.sh /path/to/sshfs_android :app:testDebug
 ```
 
 The unit suite covers the data model, the key/credential crypto, the backup format and its
-export/restore round trip, the SAF value types, and the SFTP wrapper — the last one against a **real SFTP server started inside the test JVM**
+export/restore round trip (encrypted and config-only), the SAF value types, and the SFTP wrapper — the last one against a **real SFTP server started inside the test JVM**
 (Apache MINA SSHD), so no network or outside server is involved.
 
 The instrumented suite runs on the emulator and drives the `DocumentsProvider` the way the

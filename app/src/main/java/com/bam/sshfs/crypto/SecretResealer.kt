@@ -39,7 +39,9 @@ class SecretResealer(
         var failed = 0
 
         keys.all().forEach { key ->
-            val private = convert(key.privateKeyCiphertext, writer)
+            // A placeholder key has no private blob to convert; "" stays "" rather than
+            // failing the row and stalling the whole pass.
+            val private = if (key.hasPrivateHalf) convert(key.privateKeyCiphertext, writer) else ""
             val passphrase = key.passphraseCiphertext?.let { convert(it, writer) }
             if (private == null || (key.passphraseCiphertext != null && passphrase == null)) {
                 failed++

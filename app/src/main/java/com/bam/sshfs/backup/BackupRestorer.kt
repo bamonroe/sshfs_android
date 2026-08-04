@@ -8,8 +8,19 @@ import com.bam.sshfs.data.model.Host
 import com.bam.sshfs.data.model.Identity
 import com.bam.sshfs.data.model.SshKey
 
-/** How much a restore put back. */
-data class RestoreResult(val keys: Int, val identities: Int, val hosts: Int)
+/**
+ * How much a restore put back.
+ *
+ * [incompleteKeys] names the keys that came out of a config-only file with no private
+ * half — restored as placeholders, and unusable until the user supplies the material.
+ * They are named rather than counted because the user has to go find each one.
+ */
+data class RestoreResult(
+    val keys: Int,
+    val identities: Int,
+    val hosts: Int,
+    val incompleteKeys: List<String> = emptyList(),
+)
 
 /**
  * Writes a [BackupDocument] back into the database, re-sealing every secret under
@@ -32,21 +43,35 @@ class BackupRestorer(
 ) {
 
     suspend fun restore(document: BackupDocument): RestoreResult {
-        val keyIds = restoreKeys(document)
-        val identityIds = restoreIdentities(document, keyIds)
+        val restoredKeys = restoreKeys(document)
+        val identityIds = restoreIdentities(document, restoredKeys.ids)
         val hostCount = restoreHosts(document, identityIds)
-        return RestoreResult(keyIds.size, identityIds.size, hostCount)
+        return RestoreResult(
+            keys = restoredKeys.ids.size,
+            identities = identityIds.size,
+            hosts = hostCount,
+            incompleteKeys = restoredKeys.incomplete,
+        )
     }
 
-    /** @return old key id → newly inserted id. */
-    private suspend fun restoreKeys(document: BackupDocument): Map<Long, Long> {
+    /** The id remapping for the restored keys, plus the names of the placeholder ones. */
+    private data class RestoredKeys(val ids: Map<Long, Long>, val incomplete: List<String>)
+
+    private suspend fun restoreKeys(document: BackupDocument): RestoredKeys {
         val taken = keys.all().map { it.name }.toMutableSet()
-        return document.keys.associate { key ->
-            val id = keys.insert(
+        val ids = mutableMapOf<Long, Long>()
+        val incomplete = mutableListOf<String>()
+        document.keys.forEach { key ->
+            val name = uniqueName(key.name, taken)
+            // A placeholder's empty private half is stored as-is: sealing "" would give
+            // a blob that decrypts to nothing, which reads as a usable key everywhere.
+            val placeholder = ConfigOnly.isPlaceholder(key)
+            if (placeholder) incomplete += name
+            ids[key.id] = keys.insert(
                 SshKey(
-                    name = uniqueName(key.name, taken),
+                    name = name,
                     type = key.type,
-                    privateKeyCiphertext = secrets.encrypt(key.privateKey),
+                    privateKeyCiphertext = if (placeholder) "" else secrets.encrypt(key.privateKey),
                     publicKey = key.publicKey,
                     hasPassphrase = key.hasPassphrase,
                     passphraseCiphertext = key.passphrase?.let(secrets::encrypt),
@@ -54,8 +79,8 @@ class BackupRestorer(
                     createdAt = key.createdAt,
                 ),
             )
-            key.id to id
         }
+        return RestoredKeys(ids, incomplete)
     }
 
     /** @return old identity id → newly inserted id. */

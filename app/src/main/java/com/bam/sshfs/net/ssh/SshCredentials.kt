@@ -38,7 +38,9 @@ class CredentialResolver(private val secrets: SecretStore) {
         SshCredentials(
             username = identity.username.trim(),
             password = identity.passwordCiphertext?.let(secrets::decrypt),
-            privateKey = key?.privateKeyCiphertext?.let(secrets::decrypt),
+            // A placeholder key has no private half to decrypt; the connection falls
+            // back to whatever else the identity offers rather than failing here.
+            privateKey = key?.takeIf { it.hasPrivateHalf }?.let { secrets.decrypt(it.privateKeyCiphertext) },
             passphrase = key?.passphraseCiphertext?.let(secrets::decrypt),
         )
 }

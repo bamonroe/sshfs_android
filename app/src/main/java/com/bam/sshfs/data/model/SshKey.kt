@@ -21,7 +21,13 @@ data class SshKey(
     /** User-facing label, unique enough to pick from a list. */
     val name: String,
     val type: KeyType,
-    /** Keystore-encrypted private key blob, base64. */
+    /**
+     * Keystore-encrypted private key blob, base64.
+     *
+     * Empty for a **placeholder** key — one restored from a config-only export, which
+     * carries the public half and every link to the key but no private material. Ask
+     * [hasPrivateHalf] rather than testing this column by hand.
+     */
     val privateKeyCiphertext: String,
     /** OpenSSH-format public key, safe to store in the clear. */
     val publicKey: String,
@@ -31,4 +37,7 @@ data class SshKey(
     val passphraseCiphertext: String? = null,
     val origin: KeyOrigin,
     val createdAt: Long,
-)
+) {
+    /** False for a placeholder: the key can't authenticate or be exported until filled in. */
+    val hasPrivateHalf: Boolean get() = privateKeyCiphertext.isNotEmpty()
+}

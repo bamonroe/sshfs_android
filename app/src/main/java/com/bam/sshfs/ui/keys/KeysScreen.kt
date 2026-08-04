@@ -46,6 +46,7 @@ private sealed interface KeysDialog {
     data object Import : KeysDialog
     data class ShowPublic(val key: SshKey) : KeysDialog
     data class ExportPrivate(val key: SshKey) : KeysDialog
+    data class SupplyPrivate(val key: SshKey) : KeysDialog
     data class Rename(val key: SshKey) : KeysDialog
     data class Delete(val key: SshKey) : KeysDialog
 }
@@ -91,6 +92,7 @@ fun KeysScreen(modifier: Modifier = Modifier, vm: KeysViewModel = viewModel()) {
                 keys = keys,
                 onShowPublicKey = { dialog = KeysDialog.ShowPublic(it) },
                 onExportPrivateKey = { dialog = KeysDialog.ExportPrivate(it) },
+                onSupplyPrivateKey = { dialog = KeysDialog.SupplyPrivate(it) },
                 onRename = { dialog = KeysDialog.Rename(it) },
                 onDelete = { dialog = KeysDialog.Delete(it) },
             )
@@ -123,6 +125,9 @@ private fun KeysDialogHost(
         is KeysDialog.ExportPrivate -> ExportKeyDialog(dialog.key, onDismiss) {
             vm.prepareExport(dialog.key); onDismiss()
         }
+        is KeysDialog.SupplyPrivate -> SupplyKeyDialog(dialog.key, onDismiss) { key, passphrase ->
+            vm.supplyPrivateKey(dialog.key, key, passphrase); onDismiss()
+        }
         is KeysDialog.Rename -> RenameKeyDialog(dialog.key, onDismiss) { name ->
             vm.rename(dialog.key, name); onDismiss()
         }
@@ -143,6 +148,7 @@ private fun KeyList(
     keys: List<SshKey>,
     onShowPublicKey: (SshKey) -> Unit,
     onExportPrivateKey: (SshKey) -> Unit,
+    onSupplyPrivateKey: (SshKey) -> Unit,
     onRename: (SshKey) -> Unit,
     onDelete: (SshKey) -> Unit,
 ) {
@@ -160,6 +166,7 @@ private fun KeyList(
                 key = key,
                 onShowPublicKey = { onShowPublicKey(key) },
                 onExportPrivateKey = { onExportPrivateKey(key) },
+                onSupplyPrivateKey = { onSupplyPrivateKey(key) },
                 onRename = { onRename(key) },
                 onDelete = { onDelete(key) },
             )

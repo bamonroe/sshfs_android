@@ -19,14 +19,3 @@ add_proposed_work = "Add proposed work as a new task rather than losing it."
 remove_dropped_items = "Remove dropped items with a one-line why."
 finish_work = "When a task is fully finished (built, tested, documented), run `scripts/todo.sh done <id>` to move it to FINISHED.toml."
 scope = "[Project scope rule — what is in and out of bounds for this project.]"
-
-[[task]]
-id = "unencrypted-config-only-backup-no-private-keys"
-title = "Unencrypted config-only backup (no private keys)"
-description = "Export all configuration details (identities, hosts, ports, options, public keys) as a plaintext/unencrypted file that deliberately excludes private key material, for sharing or version control. Restore should prompt for the missing keys."
-status = "active"
-category = "feature"
-urgency = "normal"
-order = 30
-created = 2026-08-03
-tags = ["backup", "export"]

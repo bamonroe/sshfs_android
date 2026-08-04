@@ -90,6 +90,40 @@ class KeysViewModel(
         store(name, material, KeyOrigin.IMPORTED, passphrase?.ifBlank { null })
     }
 
+    /**
+     * Fill in the private half of a placeholder key restored from a config-only file.
+     *
+     * The row keeps its id, name and every identity that links to it — only the
+     * material and the fields derived from it change, which is the whole point: the
+     * configuration was restored first and the secret catches up afterwards.
+     */
+    fun supplyPrivateKey(key: SshKey, privateKey: String, passphrase: String?) = work {
+        val app = getApplication<Application>()
+        val material = withContext(Dispatchers.Default) {
+            KeyImporter.load(privateKey, passphrase?.ifBlank { null }, key.name)
+        }
+        Secrets.unlockForWrite(
+            app,
+            app.getString(R.string.auth_prompt_title),
+            app.getString(R.string.auth_prompt_save_key),
+        )
+        val sealed = withContext(Dispatchers.IO) {
+            secrets.encrypt(material.privateKey) to passphrase?.ifBlank { null }?.let(secrets::encrypt)
+        }
+        repo.save(
+            key.copy(
+                type = material.type,
+                privateKeyCiphertext = sealed.first,
+                // The placeholder's public half came from the export; the supplied
+                // private key is authoritative now, and the two must agree.
+                publicKey = material.publicKey,
+                hasPassphrase = material.encrypted,
+                passphraseCiphertext = sealed.second,
+            ),
+        )
+        _notice.value = app.getString(R.string.key_supplied, key.name)
+    }
+
     /** Rename an existing key; nothing else about a stored pair is editable. */
     fun rename(key: SshKey, name: String) = work { repo.save(key.copy(name = name.trim())) }
 
@@ -111,6 +145,10 @@ class KeysViewModel(
      */
     fun prepareExport(key: SshKey) = work {
         val app = getApplication<Application>()
+        if (!key.hasPrivateHalf) {
+            _error.value = app.getString(R.string.key_placeholder_no_export)
+            return@work
+        }
         Secrets.unlockForRead(
             app.getString(R.string.auth_prompt_title),
             app.getString(R.string.auth_prompt_export_key),

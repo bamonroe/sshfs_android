@@ -4,6 +4,7 @@ import com.bam.sshfs.crypto.SecretStore
 import com.bam.sshfs.data.db.HostDao
 import com.bam.sshfs.data.db.IdentityDao
 import com.bam.sshfs.data.db.KeyDao
+import com.bam.sshfs.data.model.Host
 
 /**
  * Reads the whole configuration out of the database and unseals it into a
@@ -28,6 +29,42 @@ class BackupExporter(
     suspend fun sealedSecrets(): List<String?> =
         keys.all().flatMap { listOf(it.privateKeyCiphertext, it.passphraseCiphertext) } +
             identities.all().map { it.passwordCiphertext }
+
+    /**
+     * The configuration with every secret left behind — see [ConfigOnly].
+     *
+     * This never touches the Keystore, so it needs no authentication prompt and can't
+     * fail on a locked device: the sealed columns are simply not read.
+     */
+    suspend fun collectConfigOnly(now: Long): BackupDocument = ConfigOnly.redact(
+        BackupDocument(
+            createdAt = now,
+            keys = keys.all().map { key ->
+                BackupKey(
+                    id = key.id,
+                    name = key.name,
+                    type = key.type,
+                    privateKey = "",
+                    publicKey = key.publicKey,
+                    hasPassphrase = key.hasPassphrase,
+                    passphrase = null,
+                    origin = key.origin,
+                    createdAt = key.createdAt,
+                )
+            },
+            identities = identities.all().map { identity ->
+                BackupIdentity(
+                    id = identity.id,
+                    name = identity.name,
+                    username = identity.username,
+                    password = null,
+                    keyId = identity.keyId,
+                    createdAt = identity.createdAt,
+                )
+            },
+            hosts = hosts.all().map(::hostOf),
+        ),
+    )
 
     /** Unseal the whole configuration. [now] stamps the document. */
     suspend fun collect(now: Long): BackupDocument = BackupDocument(
@@ -55,17 +92,18 @@ class BackupExporter(
                 createdAt = identity.createdAt,
             )
         },
-        hosts = hosts.all().map { host ->
-            BackupHost(
-                id = host.id,
-                name = host.name,
-                address = host.address,
-                port = host.port,
-                defaultIdentityId = host.defaultIdentityId,
-                remoteRoot = host.remoteRoot,
-                extraArgs = host.extraArgs,
-                createdAt = host.createdAt,
-            )
-        },
+        hosts = hosts.all().map(::hostOf),
+    )
+
+    /** Hosts hold nothing secret, so both passes share one mapping. */
+    private fun hostOf(host: Host) = BackupHost(
+        id = host.id,
+        name = host.name,
+        address = host.address,
+        port = host.port,
+        defaultIdentityId = host.defaultIdentityId,
+        remoteRoot = host.remoteRoot,
+        extraArgs = host.extraArgs,
+        createdAt = host.createdAt,
     )
 }

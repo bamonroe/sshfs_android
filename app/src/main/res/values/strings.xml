@@ -143,6 +143,16 @@
     <string name="backup_passphrase_again">Repeat passphrase</string>
     <string name="backup_passphrase_mismatch">The two passphrases do not match.</string>
     <string name="backup_export_done">Backup saved.</string>
+    <string name="settings_config_backup_body">A config-only export is plain, unencrypted JSON: hosts, identities and public keys, with private keys and passwords left out. Safe to share or check into version control. Restoring one brings back the keys as placeholders you fill in afterwards.</string>
+    <string name="action_export_config">Export config only\u2026</string>
+    <string name="backup_config_export_done">Configuration exported. It contains no private keys or passwords.</string>
+    <string name="backup_restore_incomplete">These keys still need their private half: %1$s.</string>
+    <string name="key_placeholder_badge">Private key missing</string>
+    <string name="key_placeholder_no_export">This key has no private half to export yet.</string>
+    <string name="action_supply_private_key">Supply private key\u2026</string>
+    <string name="key_supply_title">Private key for %1$s</string>
+    <string name="key_supply_body">This key was restored from a config-only export, so only its public half is here. Paste or pick the matching private key to make it usable.</string>
+    <string name="key_supplied">Private key added to %1$s.</string>
     <string name="backup_restore_done">Restored %1$d keys, %2$d identities and %3$d hosts.</string>
 
     <!-- The biometric / device-credential prompt -->

@@ -33,6 +33,7 @@ fun KeyListItem(
     key: SshKey,
     onShowPublicKey: () -> Unit,
     onExportPrivateKey: () -> Unit,
+    onSupplyPrivateKey: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -60,8 +61,17 @@ fun KeyListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // A placeholder is useless until filled in, so say so on the card
+                // rather than letting the user discover it on a failed connect.
+                if (!key.hasPrivateHalf) {
+                    Text(
+                        text = stringResource(R.string.key_placeholder_badge),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
-            KeyActionsMenu(onShowPublicKey, onExportPrivateKey, onRename, onDelete)
+            KeyActionsMenu(key, onShowPublicKey, onExportPrivateKey, onSupplyPrivateKey, onRename, onDelete)
         }
     }
 }
@@ -78,8 +88,10 @@ private fun subtitle(key: SshKey): String {
 
 @Composable
 private fun KeyActionsMenu(
+    key: SshKey,
     onShowPublicKey: () -> Unit,
     onExportPrivateKey: () -> Unit,
+    onSupplyPrivateKey: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -93,10 +105,17 @@ private fun KeyActionsMenu(
                 text = { Text(stringResource(R.string.action_show_public_key)) },
                 onClick = { open = false; onShowPublicKey() },
             )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_export_private_key)) },
-                onClick = { open = false; onExportPrivateKey() },
-            )
+            if (key.hasPrivateHalf) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_export_private_key)) },
+                    onClick = { open = false; onExportPrivateKey() },
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_supply_private_key)) },
+                    onClick = { open = false; onSupplyPrivateKey() },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.action_rename)) },
                 onClick = { open = false; onRename() },

@@ -17,6 +17,16 @@ finish_work = "Tasks arrive here via `scripts/todo.sh done <id>`; newest first, 
 growth = "This file only grows; nothing is removed from it."
 
 [[task]]
+id = "unencrypted-config-only-backup-no-private-keys"
+title = "Unencrypted config-only backup (no private keys)"
+description = "Export all configuration details (identities, hosts, ports, options, public keys) as a plaintext/unencrypted file that deliberately excludes private key material, for sharing or version control. Restore should prompt for the missing keys."
+status = "finished"
+category = "feature"
+created = 2026-08-03
+completed = 2026-08-03
+tags = ["backup", "export"]
+
+[[task]]
 id = "encrypted-full-config-backup-including-private-keys"
 title = "Encrypted full-config backup including private keys"
 description = "Export the entire app configuration (keys, identities, hosts, connection settings) into a single encrypted backup file that includes private key material. Encryption with a user-supplied passphrase; restore path must import everything back."
