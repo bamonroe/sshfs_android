@@ -13,13 +13,14 @@ how a user builds and runs the app.
 | `…/data/db/` | `SshfsDatabase`, the DAOs, and the enum `Converters` |
 | `…/data/repo/` | Repositories: CRUD plus the referential-integrity rules |
 | `…/data/settings/` | `AppSettings`: the user's preference switches (no secrets) |
+| `…/backup/` | The encrypted whole-configuration backup: document model, JSON, passphrase envelope, export/restore |
 | `…/crypto/` | Key generation, import/parsing, OpenSSH text formats, secret storage, the authentication gate |
 | `…/ui/` | Compose screens and the Material 3 theme |
 | `…/ui/keys/` | The Keys screen: list, generate, import, show/copy public key |
 | `…/ui/identities/` | The Identities screen: list, editor form + validation, delete/unlink |
 | `…/ui/hosts/` | The Hosts screen: list, editor form + validation, connection test |
 | `…/ui/connections/` | The Connections screen: per-host state and the connect/disconnect controls |
-| `…/ui/settings/` | The Settings screen: the authentication-gate switch and its re-seal pass |
+| `…/ui/settings/` | The Settings screen: the authentication-gate switch and its re-seal pass, plus backup and restore |
 | `…/ui/shell/` | The single-activity shell: the `Destination` enum and its bottom nav bar |
 | `…/net/` | Transport-facing helpers, plus the connection manager and its foreground service |
 | `…/net/ssh/` | The SSH/SFTP transport: connect, host-key trust, remote file operations |
@@ -217,6 +218,50 @@ The gated round-trip has **no automated test**: it needs a real enrolled credent
 tapping the prompt, which the emulator harness can't supply. What is covered is the part that
 can be: prefix dispatch and `needsAuthentication` in the unit tests, and `SecretAuthGate`'s
 register/prompt/handoff logic with a fake gate.
+
+## Backup and restore — `…/backup/`
+
+A backup has to survive the device it came from, and the Keystore key that protects secrets at
+rest deliberately cannot. So the export **unseals** every secret out of its `v1:`/`v2:` blob and
+re-seals the whole document under a key derived from a passphrase the user types; the restore
+does the reverse, sealing each secret under *this* install's Keystore key on the way in. That
+is the single decision the package is built around, and the reason the plaintext document type
+(`BackupDocument`) is documented as never touching disk.
+
+The path splits into four Android-free pieces plus two that talk to the database:
+
+| File | Job |
+|------|-----|
+| `BackupDocument` | The plaintext model: keys, identities, hosts, and `FORMAT_VERSION` |
+| `BackupJson` | The document's JSON encoding, tolerant of missing optional fields |
+| `BackupCrypto` | The passphrase envelope: PBKDF2-HMAC-SHA256 (210 000 rounds) → AES-256-GCM |
+| `BackupFile` | The file name and MIME type offered to the save dialog |
+| `BackupExporter` | Reads the DAOs and unseals into a `BackupDocument` |
+| `BackupRestorer` | Re-seals a document and inserts it, remapping ids |
+
+Four things worth knowing:
+
+- **The file is a header line plus base64 fields**, not opaque bytes: `sshfs-backup-v1`, the KDF
+  name, the iteration count, the salt, the IV, the data. A future iteration count or cipher is
+  then distinguishable from this one instead of guessed at, and `BackupCrypto.isSealed` can tell
+  a sealed backup from the plain config-only variant by looking at the first line.
+- **A wrong passphrase reports itself.** GCM's tag fails before any plaintext is produced, so
+  the restore raises `WrongPassphraseException` rather than handing malformed JSON to the parser.
+  Format problems (`BackupFormatException`) are kept distinct from it, so the message the user
+  gets says which of the two happened.
+- **Restore merges; it never replaces.** Rows are inserted fresh and the document's ids are
+  remapped to the ids SQLite hands out, in keys → identities → hosts order to match the foreign
+  keys; a colliding name gets a ` (2)` suffix. Nothing is deleted, so restoring the wrong file
+  is recoverable by hand. A reference the document doesn't contain is dropped rather than
+  failing the whole restore.
+- **The export is sealed before the save dialog opens.** `BackupViewModel` produces the finished
+  file text, *then* launches `CreateDocument`; a cancelled save drops it. The unlock prompt is
+  raised once, up front, over every blob the pass will open (`BackupExporter.sealedSecrets`),
+  rather than once per row half-way through.
+
+Everything except the ViewModel is covered by unit tests: the envelope's round trip and each of
+its refusals, the JSON round trip and its tolerances, and an export → seal → open → restore pass
+against in-memory DAO fakes that asserts the remapped links and the name disambiguation.
 
 ## UI — editing secrets you can't read back
 

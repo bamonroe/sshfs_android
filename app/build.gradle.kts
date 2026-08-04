@@ -102,6 +102,9 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // org.json ships with Android but is a throw-only stub in unit tests; the real
+    // implementation lets the backup encoder be tested on the desktop JVM.
+    testImplementation("org.json:json:20240303")
     // A real SFTP server in-process, so SshjSftpSession is tested against the
     // protocol rather than against a mock of it.
     testImplementation("org.apache.sshd:sshd-core:2.12.1")

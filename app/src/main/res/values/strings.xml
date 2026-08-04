@@ -121,6 +121,8 @@
     <string name="action_more">More</string>
     <string name="action_connect">Connect</string>
     <string name="action_disconnect">Disconnect</string>
+    <string name="action_back_up">Back up…</string>
+    <string name="action_restore">Restore…</string>
 
     <!-- Settings screen -->
     <string name="settings_title">Settings</string>
@@ -129,12 +131,27 @@
     <string name="settings_require_auth_unavailable">Unavailable: set a screen lock or enrol a fingerprint first.</string>
     <string name="settings_reseal_done">Re-sealed %1$d secrets.</string>
     <string name="settings_reseal_partial">Re-sealed %1$d secrets; %2$d could not be read.</string>
+    <string name="settings_backup">Backup and restore</string>
+    <string name="settings_backup_body">Save every key, identity and host to one file, encrypted with a passphrase you choose. The file contains your private keys, so keep it somewhere you trust. Restoring adds the file\'s entries alongside what is already here.</string>
+
+    <!-- Backup and restore -->
+    <string name="backup_export_title">Encrypted backup</string>
+    <string name="backup_export_body">Choose a passphrase. It is the only way to open this backup — nothing on this device can recover it.</string>
+    <string name="backup_restore_title">Restore backup</string>
+    <string name="backup_restore_body">Enter the passphrase this backup was sealed with. Its keys, identities and hosts are added to what is already stored; nothing is replaced.</string>
+    <string name="backup_passphrase">Passphrase</string>
+    <string name="backup_passphrase_again">Repeat passphrase</string>
+    <string name="backup_passphrase_mismatch">The two passphrases do not match.</string>
+    <string name="backup_export_done">Backup saved.</string>
+    <string name="backup_restore_done">Restored %1$d keys, %2$d identities and %3$d hosts.</string>
 
     <!-- The biometric / device-credential prompt -->
     <string name="auth_prompt_title">Unlock stored secrets</string>
     <string name="auth_prompt_subtitle">Needed to connect as “%1$s”</string>
     <string name="auth_prompt_save_key">Needed to store this key</string>
     <string name="auth_prompt_export_key">Needed to export this private key</string>
+    <string name="auth_prompt_backup">Needed to put the stored secrets into the backup</string>
+    <string name="auth_prompt_restore">Needed to store the restored secrets</string>
     <string name="auth_prompt_save_password">Needed to store this password</string>
     <string name="auth_prompt_enable">Confirm to start requiring authentication</string>
     <string name="auth_prompt_disable">Confirm to stop requiring authentication</string>

@@ -59,6 +59,27 @@ What that means day to day:
 - A device credential reset is even less forgiving here: the protected key is dropped along
   with the lock screen, so keep a backup of anything you can't regenerate.
 
+### Backing up your configuration
+
+**Settings → Backup and restore → Back up…** writes every key, identity and host to a single
+file, encrypted with a passphrase you choose. Because the Keystore key that protects secrets on
+this device can never leave it, the backup carries your **private keys in the file itself** —
+which is why it is encrypted, and why where you put the file matters.
+
+- You are asked for the passphrase twice. It is the **only** way back into the file; nothing on
+  the device can recover it, and there is no way to open a backup without it.
+- The app seals the backup *before* the save dialog opens, so cancelling the save leaves nothing
+  on disk. The suggested name is `sshfs-backup-<date>.sshfsbackup`; the destination is wherever
+  the system picker lets you write — local storage, an SD card, or a cloud provider.
+- With **Require authentication** on, you are prompted once before the backup is built, since it
+  has to unlock every stored secret.
+
+**Restore…** asks you to pick a backup file and then for its passphrase. A restore **adds** the
+file's entries to what is already stored — nothing is replaced or deleted — so restoring onto a
+device that already has hosts is safe. Keys, identities and hosts keep the links between them,
+and a name that is already taken comes back as `name (2)`. If the passphrase is wrong, or the
+file isn't a backup, you are told which and nothing is written.
+
 ## Managing keys
 
 **Add key** offers two routes:
@@ -238,8 +259,8 @@ the build to the BAM Store.
 BAM_STORE_PUBLISH=0 /data/android/build.sh /path/to/sshfs_android :app:testDebugUnitTest
 ```
 
-The unit suite covers the data model, the key/credential crypto, the SAF value types, and
-the SFTP wrapper — the last one against a **real SFTP server started inside the test JVM**
+The unit suite covers the data model, the key/credential crypto, the backup format and its
+export/restore round trip, the SAF value types, and the SFTP wrapper — the last one against a **real SFTP server started inside the test JVM**
 (Apache MINA SSHD), so no network or outside server is involved.
 
 The instrumented suite runs on the emulator and drives the `DocumentsProvider` the way the

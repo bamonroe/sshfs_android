@@ -17,6 +17,10 @@ interface HostDao {
     @Query("SELECT * FROM hosts WHERE id = :id")
     suspend fun byId(id: Long): Host?
 
+    /** Every row, once — the backup pass walks the whole table. */
+    @Query("SELECT * FROM hosts ORDER BY id")
+    suspend fun all(): List<Host>
+
     /** Explicitly clear a default identity before deleting it. */
     @Query("UPDATE hosts SET defaultIdentityId = NULL WHERE defaultIdentityId = :identityId")
     suspend fun clearIdentityLinks(identityId: Long)
